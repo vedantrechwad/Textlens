@@ -100,44 +100,56 @@ function analyzeSelectedText() {
   showModal(left, top);
   
   // Send message to background script to fetch data
-  chrome.runtime.sendMessage({ action: "analyzeText", text: currentSelection }, (response) => {
+  try {
+    chrome.runtime.sendMessage({ action: "analyzeText", text: currentSelection }, (response) => {
+      const body = document.getElementById("textlens-modal-body");
+      if (!body) return; // Modal was closed before response
+      
+      if (chrome.runtime.lastError) {
+        body.innerHTML = `<div style="color:#dc3545;">Failed to analyze: Extension connection lost. Please refresh the webpage.</div>`;
+        return;
+      }
+      
+      if (!response || !response.success) {
+        body.innerHTML = `<div style="color:#dc3545;">Failed to analyze: ${response ? response.error : "Unknown error"}</div>`;
+        return;
+      }
+      
+      // Render results
+      let html = "";
+      
+      if (response.sentiment) {
+        html += `
+          <div class="textlens-section">
+            <h5>Sentiment</h5>
+            <span class="textlens-badge ${response.sentiment.label}">${response.sentiment.label} (${Math.round(response.sentiment.confidence * 100)}%)</span>
+          </div>
+        `;
+      }
+      
+      if (response.summary) {
+        html += `
+          <div class="textlens-section">
+            <h5>TL;DR</h5>
+            <div style="color:#495057;">${response.summary}</div>
+          </div>
+        `;
+      }
+      
+      if (response.keywords && response.keywords.length > 0) {
+        html += `<div class="textlens-section"><h5>Keywords</h5><div class="textlens-chips">`;
+        response.keywords.slice(0, 5).forEach(k => {
+          html += `<span class="textlens-chip">${k.term}</span>`;
+        });
+        html += `</div></div>`;
+      }
+      
+      body.innerHTML = html;
+    });
+  } catch (err) {
     const body = document.getElementById("textlens-modal-body");
-    if (!body) return; // Modal was closed before response
-    
-    if (!response || !response.success) {
-      body.innerHTML = `<div style="color:#dc3545;">Failed to analyze: ${response ? response.error : "Unknown error"}</div>`;
-      return;
+    if (body) {
+      body.innerHTML = `<div style="color:#dc3545;">Extension was updated. Please <b>refresh this webpage</b> to continue using Textlens.</div>`;
     }
-    
-    // Render results
-    let html = "";
-    
-    if (response.sentiment) {
-      html += `
-        <div class="textlens-section">
-          <h5>Sentiment</h5>
-          <span class="textlens-badge ${response.sentiment.label}">${response.sentiment.label} (${Math.round(response.sentiment.confidence * 100)}%)</span>
-        </div>
-      `;
-    }
-    
-    if (response.summary) {
-      html += `
-        <div class="textlens-section">
-          <h5>TL;DR</h5>
-          <div style="color:#495057;">${response.summary}</div>
-        </div>
-      `;
-    }
-    
-    if (response.keywords && response.keywords.length > 0) {
-      html += `<div class="textlens-section"><h5>Keywords</h5><div class="textlens-chips">`;
-      response.keywords.slice(0, 5).forEach(k => {
-        html += `<span class="textlens-chip">${k.term}</span>`;
-      });
-      html += `</div></div>`;
-    }
-    
-    body.innerHTML = html;
-  });
+  }
 }

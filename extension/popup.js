@@ -5,9 +5,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   const btnAnalyzePage = document.getElementById("btn-analyze-page");
   const btnAnalyzeThread = document.getElementById("btn-analyze-thread");
   const selectionStatus = document.getElementById("selection-status");
-  const togglePipeline = document.getElementById("toggle-pipeline");
   const toggleStats = document.getElementById("toggle-stats");
   
+  const engineSelect = document.getElementById("sentiment-engine-select");
+  
+  // Load saved preference
+  chrome.storage.local.get(["sentimentEngine"], (result) => {
+    if (result.sentimentEngine) {
+      engineSelect.value = result.sentimentEngine;
+    }
+  });
+
+  engineSelect.addEventListener("change", (e) => {
+    chrome.storage.local.set({ sentimentEngine: e.target.value });
+  });
+
   let selectedText = "";
 
   // Check for selected text in the active tab
@@ -92,17 +104,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("error").classList.add("hidden");
     document.getElementById("results").classList.add("hidden");
 
-    if (togglePipeline.checked) {
-      document.getElementById("pipeline-view").classList.remove("hidden");
-    } else {
-      document.getElementById("pipeline-view").classList.add("hidden");
-    }
-
     try {
+      // Determine engine
+      const engine = document.getElementById("sentiment-engine-select").value || "vader";
+
       const response = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text })
+        body: JSON.stringify({ 
+          text: text,
+          options: {
+            sentiment_model: engine,
+            sentiment: true,
+            summary: true,
+            keywords: true,
+            entities: true,
+            pos: true,
+            statistics: true
+          }
+        })
       });
 
       const data = await response.json();

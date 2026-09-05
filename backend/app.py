@@ -52,7 +52,7 @@ def analyze():
     
     result = {
         "success": True,
-        "sentiment": analyze_sentiment(text) if options.get("sentiment") else None,
+        "sentiment": analyze_sentiment(text, options.get("sentiment_model", "vader")) if options.get("sentiment") else None,
         "summary": summarize(text) if options.get("summary") else None,
         "keywords": extract_keywords(text) if options.get("keywords") else None,
         "entities": extract_entities(text) if options.get("entities") else None,

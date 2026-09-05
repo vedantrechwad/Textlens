@@ -15,7 +15,6 @@ This project was built for an academic NLP course to demonstrate traditional NLP
 - **Keyword Extraction**: Unigram and bigram extraction using TF-IDF.
 - **Named Entity Recognition**: Identifies organizations, people, and locations using spaCy.
 - **Text Statistics**: Basic character/word counts and POS (Part of Speech) tagging distributions.
-- **Show NLP Pipeline Mode**: A special UI toggle that explains the step-by-step NLP transformations for academic demonstrations and vivas.
 
 ## Architecture
 
@@ -96,7 +95,7 @@ The server will start on `http://127.0.0.1:5000`.
 2. Go to any text-heavy webpage (e.g., Wikipedia, Reddit).
 3. Select a paragraph of text, right-click, and choose **Analyze with Textlens**.
 4. Alternatively, click the Textlens icon in the Chrome toolbar and click **Analyze Page**.
-5. View the results. Toggle **Show NLP Pipeline Mode** to see the exact steps the text went through in the backend.
+5. View the results.
 
 ## Academic Concepts Demonstrated
 
