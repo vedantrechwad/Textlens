@@ -61,8 +61,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         {
           target: { tabId: tabs[0].id },
           function: () => {
-             const elements = document.querySelectorAll('p, .comment, .usertext-body');
-             return Array.from(elements).map(el => el.innerText).join('\n\n');
+             let selector = 'p, article, .comment, .usertext-body';
+             const host = window.location.hostname;
+             
+             if (host.includes('reddit.com')) {
+               selector = 'shreddit-comment p, .usertext-body, [data-test-id="comment"]';
+             } else if (host.includes('twitter.com') || host.includes('x.com')) {
+               selector = '[data-testid="tweetText"]';
+             } else if (host.includes('quora.com')) {
+               selector = '.q-text.qu-dynamicFontSize, .q-box.qu-mb--tiny';
+             }
+             
+             const elements = document.querySelectorAll(selector);
+             const texts = Array.from(elements).map(el => el.innerText).filter(t => t.trim().length > 0);
+             return texts.join('\\n\\n');
           }
         },
         (results) => {
