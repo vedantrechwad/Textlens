@@ -1,0 +1,177 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  width: 340px;
+  margin: 0;
+  padding: 16px;
+  background-color: #f8f9fa;
+  color: #333;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 16px;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 22px;
+  color: #2c3e50;
+  letter-spacing: 1px;
+}
+
+header p {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 8px;
+  border: none;
+  border-radius: 6px;
+  background-color: #4361ee;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #3a53d0;
+}
+
+button:disabled {
+  background-color: #adb5bd;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background-color: #6c757d;
+}
+button.secondary:hover {
+  background-color: #5a6268;
+}
+
+#selection-status {
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 8px;
+  color: #495057;
+  font-style: italic;
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+.badge.positive { background-color: #d4edda; color: #155724; }
+.badge.negative { background-color: #f8d7da; color: #721c24; }
+.badge.neutral { background-color: #e2e3e5; color: #383d41; }
+
+.sentiment-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.confidence {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+/* Chips */
+.chip-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  background: #e9ecef;
+  color: #495057;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.chip.entity-org { background: #cce5ff; color: #004085; }
+.chip.entity-gpe { background: #d4edda; color: #155724; }
+.chip.entity-person { background: #fff3cd; color: #856404; }
+
+/* Stats */
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+/* Loader */
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #4361ee;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  margin: 10px auto;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+#loading, #error { text-align: center; margin-top: 20px; }
+#error { color: #dc3545; }
+.hint { font-size: 11px; color: #6c757d; }
+
+p { font-size: 13px; line-height: 1.5; margin: 0; }
+.mt-2 { margin-top: 8px; }
+
+/* Pipeline Mode */
+.toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #495057;
+}
+.flow-step {
+  font-size: 11px;
+  background: #f8f9fa;
+  border-left: 3px solid #4361ee;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  font-family: monospace;
+}

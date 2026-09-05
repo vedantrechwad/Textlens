@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NLP Lens</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>NLP LENS</h1>
+    <p>Understand the meaning behind what you're reading</p>
+  </header>
+
+  <div id="controls">
+    <div id="selection-status">No text selected.</div>
+    <button id="btn-analyze-selection" disabled>Analyze Selection</button>
+    <button id="btn-analyze-page">Analyze Page</button>
+    <button id="btn-analyze-thread" class="secondary">Analyze Thread (Beta)</button>
+    
+    <label class="toggle-container mt-2">
+      <input type="checkbox" id="toggle-pipeline">
+      <span class="toggle-label">Show NLP Pipeline Mode</span>
+    </label>
+  </div>
+
+  <div id="loading" class="hidden">
+    <div class="spinner"></div>
+    <p>Analyzing text...</p>
+  </div>
+  
+  <div id="error" class="hidden">
+    <p id="error-msg"></p>
+    <p class="hint">Ensure the Flask backend is running on http://127.0.0.1:5000</p>
+  </div>
+
+  <div id="results" class="hidden">
+    <!-- Pipeline info -->
+    <div id="pipeline-view" class="card hidden">
+      <h3>NLP Pipeline Executed</h3>
+      <div class="flow-step">1. Tokenization & Cleaning</div>
+      <div class="flow-step">2. Stopword & Punctuation Removal</div>
+      <div class="flow-step">3. Lemmatization & Negation Handling</div>
+      <div class="flow-step">4. TF-IDF Vectorization</div>
+      <div class="flow-step">5. Linear SVM Classification</div>
+      <div class="flow-step">6. TextRank Graph Summarization</div>
+    </div>
+
+    <!-- Sentiment -->
+    <div class="card">
+      <h3>Sentiment</h3>
+      <div class="sentiment-box">
+        <span id="sentiment-label" class="badge"></span>
+        <div class="confidence">
+          <span>Confidence:</span>
+          <span id="sentiment-confidence"></span>
+        </div>
+      </div>
+      <div id="sentiment-indicators-container" class="hidden">
+        <h4>Key Indicators:</h4>
+        <div id="sentiment-indicators" class="chip-container"></div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="card">
+      <h3>TL;DR (TextRank)</h3>
+      <p id="summary-text"></p>
+    </div>
+
+    <!-- Keywords -->
+    <div class="card">
+      <h3>Keywords</h3>
+      <div id="keywords-container" class="chip-container"></div>
+    </div>
+
+    <!-- Entities -->
+    <div class="card">
+      <h3>Entities</h3>
+      <div id="entities-container" class="chip-container"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="stats-header" id="toggle-stats">
+        <h3>Text Statistics</h3>
+        <span class="arrow">▼</span>
+      </div>
+      <div id="stats-content" class="hidden">
+        <div class="stat-row"><span>Words:</span> <span id="stat-words"></span></div>
+        <div class="stat-row"><span>Sentences:</span> <span id="stat-sentences"></span></div>
+        <div class="stat-row"><span>Complexity:</span> <span id="stat-complexity"></span></div>
+        <div id="pos-container" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

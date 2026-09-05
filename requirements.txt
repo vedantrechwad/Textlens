@@ -1,0 +1,8 @@
+flask
+flask-cors
+nltk
+spacy
+scikit-learn
+networkx
+pandas
+pytest
