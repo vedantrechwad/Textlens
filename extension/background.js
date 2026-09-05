@@ -1,17 +1,17 @@
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: "analyze-nlp-lens",
-    title: "Analyze with NLP Lens",
+    id: "analyze-textlens",
+    title: "Analyze with Textlens",
     contexts: ["selection"]
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "analyze-nlp-lens") {
+  if (info.menuItemId === "analyze-textlens") {
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       function: () => {
-        alert("Text selected for NLP Lens. Please click the NLP Lens extension icon to see the analysis.");
+        alert("Text selected for Textlens. Please click the Textlens extension icon to see the analysis.");
       }
     });
   }

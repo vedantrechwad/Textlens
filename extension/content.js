@@ -27,9 +27,9 @@ function showFloatingButton(selection, mouseX, mouseY) {
   hideFloatingButton(); // remove existing
   
   floatingBtn = document.createElement("div");
-  floatingBtn.id = "nlp-lens-floating-btn";
+  floatingBtn.id = "textlens-floating-btn";
   floatingBtn.innerText = "T";
-  floatingBtn.title = "Analyze with NLP Lens";
+  floatingBtn.title = "Analyze with Textlens";
   
   // Position near the mouse cursor
   floatingBtn.style.top = (window.scrollY + mouseY + 15) + "px";
@@ -55,7 +55,7 @@ function showModal(x, y) {
   hideModal();
   
   modal = document.createElement("div");
-  modal.id = "nlp-lens-modal";
+  modal.id = "textlens-modal";
   
   // Keep it within screen bounds roughly
   const maxW = window.innerWidth - 320;
@@ -65,18 +65,18 @@ function showModal(x, y) {
   modal.style.left = actualX + "px";
   
   modal.innerHTML = `
-    <div id="nlp-lens-modal-header">
-      <h4>NLP Lens</h4>
-      <div id="nlp-lens-close-btn">&times;</div>
+    <div id="textlens-modal-header">
+      <h4>Textlens</h4>
+      <div id="textlens-close-btn">&times;</div>
     </div>
-    <div id="nlp-lens-modal-body">
-      <div class="nlp-lens-loader">Analyzing...</div>
+    <div id="textlens-modal-body">
+      <div class="textlens-loader">Analyzing...</div>
     </div>
   `;
   
   document.body.appendChild(modal);
   
-  document.getElementById("nlp-lens-close-btn").addEventListener("click", () => {
+  document.getElementById("textlens-close-btn").addEventListener("click", () => {
     hideModal();
   });
 }
@@ -101,7 +101,7 @@ function analyzeSelectedText() {
   
   // Send message to background script to fetch data
   chrome.runtime.sendMessage({ action: "analyzeText", text: currentSelection }, (response) => {
-    const body = document.getElementById("nlp-lens-modal-body");
+    const body = document.getElementById("textlens-modal-body");
     if (!body) return; // Modal was closed before response
     
     if (!response || !response.success) {
@@ -114,16 +114,16 @@ function analyzeSelectedText() {
     
     if (response.sentiment) {
       html += `
-        <div class="nlp-lens-section">
+        <div class="textlens-section">
           <h5>Sentiment</h5>
-          <span class="nlp-lens-badge ${response.sentiment.label}">${response.sentiment.label} (${Math.round(response.sentiment.confidence * 100)}%)</span>
+          <span class="textlens-badge ${response.sentiment.label}">${response.sentiment.label} (${Math.round(response.sentiment.confidence * 100)}%)</span>
         </div>
       `;
     }
     
     if (response.summary) {
       html += `
-        <div class="nlp-lens-section">
+        <div class="textlens-section">
           <h5>TL;DR</h5>
           <div style="color:#495057;">${response.summary}</div>
         </div>
@@ -131,9 +131,9 @@ function analyzeSelectedText() {
     }
     
     if (response.keywords && response.keywords.length > 0) {
-      html += `<div class="nlp-lens-section"><h5>Keywords</h5><div class="nlp-lens-chips">`;
+      html += `<div class="textlens-section"><h5>Keywords</h5><div class="textlens-chips">`;
       response.keywords.slice(0, 5).forEach(k => {
-        html += `<span class="nlp-lens-chip">${k.term}</span>`;
+        html += `<span class="textlens-chip">${k.term}</span>`;
       });
       html += `</div></div>`;
     }

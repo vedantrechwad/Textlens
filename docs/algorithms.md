@@ -1,6 +1,6 @@
 # NLP Algorithms and Methodology
 
-This document explains the core classical NLP techniques used in the **NLP Lens** project.
+This document explains the core classical NLP techniques used in the **Textlens** project.
 
 ## 1. Text Preprocessing
 Before any machine learning models can process text, it must be cleaned and transformed.

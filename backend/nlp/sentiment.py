@@ -1,77 +1,65 @@
-import os
-import pickle
-from backend.config import Config
-from backend.nlp.preprocessing import preprocess_for_sentiment
-import warnings
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import string
 
-# Suppress warnings from scikit-learn
-warnings.filterwarnings("ignore", category=UserWarning)
+try:
+    nltk.data.find('sentiment/vader_lexicon.zip')
+except LookupError:
+    nltk.download('vader_lexicon')
 
-model = None
-vectorizer = None
-
-def load_models():
-    global model, vectorizer
-    if model is None or vectorizer is None:
-        try:
-            with open(Config.SENTIMENT_MODEL_PATH, 'rb') as f:
-                model = pickle.load(f)
-            with open(Config.TFIDF_VECTORIZER_PATH, 'rb') as f:
-                vectorizer = pickle.load(f)
-        except Exception as e:
-            print(f"Error loading sentiment models: {e}")
-            model = None
-            vectorizer = None
+# Initialize analyzer globally so it's only done once
+sia = SentimentIntensityAnalyzer()
 
 def analyze_sentiment(text: str) -> dict:
-    load_models()
-    if model is None or vectorizer is None:
-        return {"error": "Sentiment models not loaded."}
-        
-    processed_text = preprocess_for_sentiment(text)
-    if not processed_text:
+    if not text or not text.strip():
         return {"label": "neutral", "confidence": 1.0, "indicators": []}
         
-    # Transform
-    vec = vectorizer.transform([processed_text])
+    # Get scores
+    scores = sia.polarity_scores(text)
     
-    # Predict
-    pred = model.predict(vec)[0]
+    # Determine label from compound score
+    # Usually: >= 0.05 is Positive, <= -0.05 is Negative, else Neutral
+    compound = scores['compound']
+    if compound >= 0.05:
+        label = "positive"
+        confidence = scores['pos'] / (scores['pos'] + scores['neu'] + scores['neg'] + 1e-9)
+        # Ensure confidence looks reasonable, base it slightly on compound
+        confidence = max(0.5, abs(compound))
+    elif compound <= -0.05:
+        label = "negative"
+        confidence = max(0.5, abs(compound))
+    else:
+        label = "neutral"
+        # High neutral score usually implies high confidence in it being neutral
+        confidence = scores['neu']
+
+    # Extract indicators
+    # We tokenize the text and check VADER's lexicon for highly polarized words
+    words = text.split()
+    indicators_with_scores = []
     
-    # Get confidence if model supports predict_proba, else default to something based on decision function
-    confidence = 0.85 # default fallback
-    if hasattr(model, 'predict_proba'):
-        proba = model.predict_proba(vec)[0]
-        confidence = float(max(proba))
-    elif hasattr(model, 'decision_function'):
-        df = model.decision_function(vec)[0]
-        # map distance from hyperplane to roughly 0.5-1.0
-        confidence = 0.5 + 0.5 * (abs(df) / (abs(df) + 1.0))
-        
-    label = "positive" if pred == 1 else "negative"
+    for w in words:
+        # clean punctuation
+        clean_w = w.strip(string.punctuation).lower()
+        if clean_w in sia.lexicon:
+            score = sia.lexicon[clean_w]
+            # If the word's polarity matches the overall document polarity
+            if (label == "positive" and score > 0) or (label == "negative" and score < 0):
+                indicators_with_scores.append((clean_w, abs(score)))
+                
+    # Sort indicators by highest absolute polarity score
+    indicators_with_scores.sort(key=lambda x: x[1], reverse=True)
     
-    # Extract indicators (features that drove the prediction)
-    # We look at the words in the text that have the highest TF-IDF weight * model coeff
+    # Take top 5 unique indicators
     indicators = []
-    if hasattr(model, 'coef_'):
-        feature_names = vectorizer.get_feature_names_out()
-        coef = model.coef_[0]
-        
-        # Get active features in the document
-        indices = vec.indices
-        
-        # Calculate impact of each feature
-        impacts = [(feature_names[i], coef[i] * vec[0, i]) for i in indices]
-        
-        if label == "positive":
-            # Sort by highest positive impact
-            impacts.sort(key=lambda x: x[1], reverse=True)
-        else:
-            # Sort by highest negative impact
-            impacts.sort(key=lambda x: x[1])
-            
-        indicators = [item[0].replace('_NEG', ' (negated)') for item in impacts[:5] if abs(item[1]) > 0.1]
-        
+    seen = set()
+    for word, _ in indicators_with_scores:
+        if word not in seen:
+            seen.add(word)
+            indicators.append(word)
+            if len(indicators) >= 5:
+                break
+                
     return {
         "label": label,
         "confidence": round(confidence, 2),

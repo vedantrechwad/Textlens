@@ -1,8 +1,8 @@
-# NLP Lens
+# Textlens
 
 > **Understand the meaning behind what you're reading.**
 
-NLP Lens is a Chrome Extension and Python Flask backend that allows you to select text on any webpage (or analyze the entire page) to extract meaningful insights using classical Natural Language Processing techniques. 
+Textlens is a Chrome Extension and Python Flask backend that allows you to select text on any webpage (or analyze the entire page) to extract meaningful insights using classical Natural Language Processing techniques. 
 
 This project was built for an academic NLP course to demonstrate traditional NLP pipelines without relying on LLMs.
 
@@ -55,7 +55,7 @@ The sentiment model is trained on the **NLTK Movie Reviews** dataset (2000 docum
 ### 1. Clone the repository
 ```bash
 git clone <repository>
-cd nlp-lens
+cd textlens
 ```
 
 ### 2. Setup Python Environment
@@ -94,8 +94,8 @@ The server will start on `http://127.0.0.1:5000`.
 ## Usage / Demonstration
 1. Ensure the Flask server is running.
 2. Go to any text-heavy webpage (e.g., Wikipedia, Reddit).
-3. Select a paragraph of text, right-click, and choose **Analyze with NLP Lens**.
-4. Alternatively, click the NLP Lens icon in the Chrome toolbar and click **Analyze Page**.
+3. Select a paragraph of text, right-click, and choose **Analyze with Textlens**.
+4. Alternatively, click the Textlens icon in the Chrome toolbar and click **Analyze Page**.
 5. View the results. Toggle **Show NLP Pipeline Mode** to see the exact steps the text went through in the backend.
 
 ## Academic Concepts Demonstrated
@@ -109,7 +109,7 @@ The server will start on `http://127.0.0.1:5000`.
 - **NER & POS Tagging**: Extracting structural and semantic meaning from unstructured text.
 
 ## Privacy
-NLP Lens processes text entirely through your local Flask backend. No text is sent to third-party AI APIs (no LLMs are used).
+Textlens processes text entirely through your local Flask backend. No text is sent to third-party AI APIs (no LLMs are used).
 
 ## Future Improvements
 - Train on larger datasets (e.g., Sentiment140) for generalized social media analysis.

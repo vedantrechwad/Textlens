@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "NLP Lens",
+  "name": "Textlens",
   "version": "1.0.0",
   "description": "Understand the meaning behind what you're reading using classical NLP.",
   "permissions": [
@@ -15,7 +15,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Analyze with NLP Lens"
+    "default_title": "Analyze with Textlens"
   },
   "background": {
     "service_worker": "background.js"

@@ -1,4 +1,4 @@
-#nlp-lens-floating-btn {
+#textlens-floating-btn {
   position: absolute;
   z-index: 999999;
   width: 28px;
@@ -17,11 +17,11 @@
   border: 2px solid white;
   transition: transform 0.1s;
 }
-#nlp-lens-floating-btn:hover {
+#textlens-floating-btn:hover {
   transform: scale(1.1);
 }
 
-#nlp-lens-modal {
+#textlens-modal {
   position: absolute;
   z-index: 999999;
   width: 300px;
@@ -34,7 +34,7 @@
   border: 1px solid #e9ecef;
 }
 
-#nlp-lens-modal-header {
+#textlens-modal-header {
   background: #f8f9fa;
   padding: 10px 12px;
   border-bottom: 1px solid #e9ecef;
@@ -42,41 +42,41 @@
   justify-content: space-between;
   align-items: center;
 }
-#nlp-lens-modal-header h4 {
+#textlens-modal-header h4 {
   margin: 0;
   font-size: 14px;
   color: #2c3e50;
 }
-#nlp-lens-close-btn {
+#textlens-close-btn {
   cursor: pointer;
   font-size: 16px;
   color: #6c757d;
   line-height: 1;
 }
 
-#nlp-lens-modal-body {
+#textlens-modal-body {
   padding: 12px;
   font-size: 13px;
   max-height: 400px;
   overflow-y: auto;
 }
 
-.nlp-lens-loader {
+.textlens-loader {
   text-align: center;
   padding: 20px;
   color: #6c757d;
 }
 
-.nlp-lens-section {
+.textlens-section {
   margin-bottom: 12px;
 }
-.nlp-lens-section h5 {
+.textlens-section h5 {
   margin: 0 0 4px 0;
   font-size: 12px;
   text-transform: uppercase;
   color: #6c757d;
 }
-.nlp-lens-badge {
+.textlens-badge {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 12px;
@@ -84,16 +84,16 @@
   font-weight: bold;
   text-transform: uppercase;
 }
-.nlp-lens-badge.positive { background-color: #d4edda; color: #155724; }
-.nlp-lens-badge.negative { background-color: #f8d7da; color: #721c24; }
-.nlp-lens-badge.neutral { background-color: #e2e3e5; color: #383d41; }
+.textlens-badge.positive { background-color: #d4edda; color: #155724; }
+.textlens-badge.negative { background-color: #f8d7da; color: #721c24; }
+.textlens-badge.neutral { background-color: #e2e3e5; color: #383d41; }
 
-.nlp-lens-chips {
+.textlens-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
-.nlp-lens-chip {
+.textlens-chip {
   background: #e9ecef;
   padding: 2px 6px;
   border-radius: 4px;

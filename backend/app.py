@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from backend.config import Config
-from backend.nlp.sentiment import analyze_sentiment, load_models
+from backend.nlp.sentiment import analyze_sentiment
 from backend.nlp.summarizer import summarize
 from backend.nlp.keywords import extract_keywords
 from backend.nlp.ner import extract_entities
@@ -18,10 +18,8 @@ CORS(app)
 
 # Basic logging setup
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("nlp-lens")
+logger = logging.getLogger("textlens")
 
-# Load models on startup
-load_models()
 
 @app.route('/health', methods=['GET'])
 def health():
