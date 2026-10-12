@@ -1,14 +1,16 @@
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 import string
+from backend.nlp.genz_translator import get_genz_sentiment_lexicon, decode_genz_text
 
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
 except LookupError:
     nltk.download('vader_lexicon')
 
-# Initialize VADER globally
+# Initialize VADER globally and augment with Gen-Z slang lexicon
 sia = SentimentIntensityAnalyzer()
+sia.lexicon.update(get_genz_sentiment_lexicon())
 
 # Lazy load Hugging Face transformer
 hf_pipeline = None
@@ -66,14 +68,26 @@ def analyze_sentiment(text: str, model_type: str = "vader") -> dict:
         except Exception as e:
             return {"label": "neutral", "confidence": 0, "indicators": [f"ERROR: {str(e)}"]}
             
-    # VADER Execution
-    scores = sia.polarity_scores(text)
+    # VADER Execution with Gen-Z slang awareness
+    decoded = decode_genz_text(text)
+    scores_raw = sia.polarity_scores(text)
     
-    # Usually: >= 0.05 is Positive, <= -0.05 is Negative, else Neutral
+    if decoded.get("has_slang"):
+        scores_decoded = sia.polarity_scores(decoded["plain_english"])
+        # If raw text was falsely pushed negative by words like "no" in "no cap", prefer decoded
+        if scores_decoded["compound"] > 0 and scores_raw["compound"] <= 0 and any(t["term"] == "no cap" for t in decoded["detected_terms"]):
+            scores = scores_decoded
+        elif abs(scores_decoded["compound"]) > abs(scores_raw["compound"]):
+            scores = scores_decoded
+        else:
+            scores = scores_raw
+    else:
+        scores = scores_raw
+    
+    # Standard thresholding: >= 0.05 is Positive, <= -0.05 is Negative, else Neutral
     compound = scores['compound']
     if compound >= 0.05:
         label = "positive"
-        confidence = scores['pos'] / (scores['pos'] + scores['neu'] + scores['neg'] + 1e-9)
         confidence = max(0.5, abs(compound))
     elif compound <= -0.05:
         label = "negative"
@@ -85,12 +99,20 @@ def analyze_sentiment(text: str, model_type: str = "vader") -> dict:
     words = text.split()
     indicators_with_scores = []
     
+    # Check individual words and detected slang phrases
     for w in words:
         clean_w = w.strip(string.punctuation).lower()
         if clean_w in sia.lexicon:
             score = sia.lexicon[clean_w]
             if (label == "positive" and score > 0) or (label == "negative" and score < 0):
                 indicators_with_scores.append((clean_w, abs(score)))
+                
+    if decoded.get("has_slang"):
+        for term_info in decoded["detected_terms"]:
+            term = term_info["term"]
+            score = term_info["sentiment_score"]
+            if (label == "positive" and score > 0) or (label == "negative" and score < 0):
+                indicators_with_scores.append((term, abs(score)))
                 
     indicators_with_scores.sort(key=lambda x: x[1], reverse=True)
     

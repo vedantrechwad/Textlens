@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "analyzeText") {
     const API_URL = "http://127.0.0.1:5000/api/analyze";
     
-    const doFetch = (engine) => {
+    const doFetch = (engine, targetLang) => {
       fetch(API_URL, {
         method: "POST",
         headers: {
@@ -32,12 +32,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           text: request.text,
           options: {
             sentiment_model: engine,
+            target_language: targetLang || "en",
             sentiment: true,
             summary: true,
             keywords: true,
             entities: true,
             pos: true,
-            statistics: true
+            statistics: true,
+            genz: true,
+            multilingual: true
           }
         })
       })
@@ -53,15 +56,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     try {
       if (chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(["sentimentEngine"], (result) => {
-          doFetch(result.sentimentEngine || "vader");
+        chrome.storage.local.get(["sentimentEngine", "targetLanguage"], (result) => {
+          doFetch(result.sentimentEngine || "vader", result.targetLanguage || "en");
         });
       } else {
-        doFetch("vader");
+        doFetch("vader", "en");
       }
     } catch (e) {
       console.error("Storage error:", e);
-      doFetch("vader");
+      doFetch("vader", "en");
     }
     
     // Return true to indicate we will send a response asynchronously

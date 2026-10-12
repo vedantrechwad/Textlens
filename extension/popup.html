@@ -2,88 +2,246 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Textlens</title>
+  <title>Textlens - NLP & Gen-Z Decoder</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <header>
-    <h1>Textlens</h1>
-    <p>Understand the meaning behind what you're reading</p>
+    <div class="logo-row">
+      <h1>Textlens</h1>
+      <span class="version-tag">NLP + Gen-Z v2</span>
+    </div>
+    <p>Understand the meaning, slang & language behind what you read</p>
   </header>
 
-  <div id="controls">
-    <div id="selection-status">No text selected.</div>
-    <button id="btn-analyze-selection" disabled>Analyze Selection</button>
-    <button id="btn-analyze-page">Analyze Page</button>
-    <button id="btn-analyze-thread" class="secondary">Analyze Thread (Beta)</button>
-    <div class="card">
-      <h3>Analysis Options</h3>
-      <div class="toggle-container mb-2">
-        <label for="sentiment-engine-select" style="margin-right: 8px;">Sentiment Engine:</label>
-        <select id="sentiment-engine-select" style="padding: 4px; border-radius: 4px; border: 1px solid #ced4da;">
-          <option value="vader">Vader</option>
-          <option value="transformer">Transformer</option>
-        </select>
-      </div>
-    </div>
+  <!-- Tab Navigation -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" id="tab-analyze-btn">🔍 Analyze Text</button>
+    <button class="tab-btn" id="tab-genz-btn">🔮 Gen-Z Decoder</button>
   </div>
 
-  <div id="loading" class="hidden">
-    <div class="spinner"></div>
-    <p>Analyzing text...</p>
-  </div>
-  
-  <div id="error" class="hidden">
-    <p id="error-msg"></p>
-    <p class="hint">Ensure the Flask backend is running on http://127.0.0.1:5000</p>
-  </div>
+  <!-- TAB 1: NLP ANALYZE -->
+  <div id="tab-analyze" class="tab-content">
+    <div id="controls">
+      <div id="selection-status">No text selected on page.</div>
+      <button id="btn-analyze-selection" disabled>Analyze Selection</button>
+      <button id="btn-analyze-page" class="secondary">Analyze Page</button>
+      <button id="btn-analyze-thread" class="secondary">Analyze Thread (Reddit/X)</button>
 
-  <div id="results" class="hidden">
-    <!-- Sentiment -->
-    <div class="card">
-      <h3>Sentiment</h3>
-      <div class="sentiment-box">
-        <span id="sentiment-label" class="badge"></span>
-        <div class="confidence">
-          <span>Confidence:</span>
-          <span id="sentiment-confidence"></span>
+      <!-- Quick text input for instant testing -->
+      <div class="custom-input-card">
+        <div class="custom-input-header" id="toggle-custom-input">
+          <span>Type / Paste Custom Text or Slang</span>
+          <span class="arrow" id="custom-input-arrow">▶</span>
+        </div>
+        <div id="custom-input-body" class="hidden">
+          <textarea id="custom-text-input" placeholder="e.g. No cap, your fit is completely giving main character energy, it's an absolute serve."></textarea>
+          <button id="btn-analyze-custom" class="btn-sm">Analyze Input</button>
         </div>
       </div>
-      <div id="sentiment-indicators-container" class="hidden">
-        <h4>Key Indicators:</h4>
-        <div id="sentiment-indicators" class="chip-container"></div>
+
+      <!-- Options Card -->
+      <div class="card options-card">
+        <h3>Analysis & Language Settings</h3>
+        <div class="option-row">
+          <label for="sentiment-engine-select">Sentiment Engine:</label>
+          <select id="sentiment-engine-select">
+            <option value="vader">VADER (Slang-Enhanced)</option>
+            <option value="transformer">Transformer (DistilBERT)</option>
+          </select>
+        </div>
+        <div class="option-row mt-2">
+          <label for="target-language-select">Target Translation:</label>
+          <select id="target-language-select">
+            <option value="en">English (Default)</option>
+            <option value="es">Spanish (Español)</option>
+            <option value="fr">French (Français)</option>
+            <option value="de">German (Deutsch)</option>
+            <option value="hi">Hindi (हिन्दी)</option>
+            <option value="ja">Japanese (日本語)</option>
+            <option value="zh-cn">Chinese (中文)</option>
+            <option value="it">Italian (Italiano)</option>
+            <option value="pt">Portuguese (Português)</option>
+            <option value="ru">Russian (Русский)</option>
+            <option value="ar">Arabic (العربية)</option>
+          </select>
+        </div>
       </div>
     </div>
 
-    <!-- Summary -->
-    <div class="card">
-      <h3>TL;DR (TextRank)</h3>
-      <p id="summary-text"></p>
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p id="loading-msg">Analyzing text & decoding...</p>
+    </div>
+    
+    <div id="error" class="hidden">
+      <p id="error-msg"></p>
+      <p class="hint">Ensure the Flask backend is running on http://127.0.0.1:5000</p>
+      <button id="btn-back-from-error" class="btn-sm secondary mt-2">Back to Controls</button>
     </div>
 
-    <!-- Keywords -->
-    <div class="card">
-      <h3>Keywords</h3>
-      <div id="keywords-container" class="chip-container"></div>
-    </div>
-
-    <!-- Entities -->
-    <div class="card">
-      <h3>Entities</h3>
-      <div id="entities-container" class="chip-container"></div>
-    </div>
-
-    <!-- Stats -->
-    <div class="card">
-      <div class="stats-header" id="toggle-stats">
-        <h3>Text Statistics</h3>
-        <span class="arrow">▼</span>
+    <div id="results" class="hidden">
+      <!-- Top Action Bar -->
+      <div class="results-top-bar">
+        <button id="btn-new-analysis" class="btn-sm secondary">← New Analysis</button>
+        <div id="language-badge-container"></div>
       </div>
-      <div id="stats-content" class="hidden">
-        <div class="stat-row"><span>Words:</span> <span id="stat-words"></span></div>
-        <div class="stat-row"><span>Sentences:</span> <span id="stat-sentences"></span></div>
-        <div class="stat-row"><span>Complexity:</span> <span id="stat-complexity"></span></div>
-        <div id="pos-container" class="mt-2"></div>
+
+      <!-- Selected / Analyzed Text Card with Interactive Highlighting -->
+      <div id="analyzed-text-card" class="card analyzed-text-card">
+        <div class="card-header-with-badge">
+          <h3>📝 Analyzed Selected Text</h3>
+          <span id="analyzed-text-badge" class="badge-count">Selection</span>
+        </div>
+        <div class="sub-label flex-between">
+          <span class="subtext-hint">Click any Gen-Z word below to highlight it here & on webpage</span>
+          <button id="btn-clear-popup-highlight" class="btn-clear-highlight hidden" title="Clear active highlight">✕ Clear</button>
+        </div>
+        <div id="analyzed-text-display" class="analyzed-text-box"></div>
+        <div id="highlight-status-banner" class="highlight-status hidden">
+          <span id="highlight-status-text"></span>
+        </div>
+      </div>
+
+      <!-- Gen-Z Slang Decoder Card (DISPLAYED FIRST) -->
+      <div id="genz-card" class="card genz-card hidden">
+        <div class="card-header-with-badge">
+          <h3>🔮 Gen-Z Slang Decoder</h3>
+          <span id="genz-count-badge" class="badge-pill"></span>
+        </div>
+        <div id="genz-level-tag" class="genz-meter-tag"></div>
+        
+        <div class="genz-section">
+          <div class="sub-label flex-between">
+            <span>Detected Terms & Definitions:</span>
+            <span class="subtext-hint-pill">👉 Click term to highlight</span>
+          </div>
+          <div class="highlight-instruction-banner">
+            <span>💡 <strong>Click any slang word</strong> below to highlight it in the selected text & on the webpage!</span>
+          </div>
+          <div id="genz-terms-container" class="genz-terms-grid"></div>
+        </div>
+
+        <div class="genz-section mt-2">
+          <div class="sub-label flex-between">
+            <span>Plain English Translation:</span>
+            <button id="btn-copy-plain-english" class="btn-copy" title="Copy decoded text">Copy</button>
+          </div>
+          <div id="genz-decoded-box" class="decoded-box"></div>
+        </div>
+      </div>
+
+      <!-- Translated Text Notice (if foreign language was detected) -->
+      <div id="translation-banner" class="card hidden">
+        <div class="banner-header">
+          <span class="icon">🌐</span>
+          <span id="translation-banner-title">Foreign Language Translated</span>
+        </div>
+        <p id="translation-banner-details" class="subtext"></p>
+        <div class="translated-box mt-2">
+          <strong>English Version:</strong>
+          <p id="translated-to-english-text"></p>
+        </div>
+      </div>
+
+      <!-- Sentiment Card -->
+      <div class="card">
+        <h3>Sentiment Analysis</h3>
+        <div class="sentiment-box">
+          <span id="sentiment-label" class="badge"></span>
+          <div class="confidence">
+            <span>Confidence:</span>
+            <span id="sentiment-confidence"></span>
+          </div>
+        </div>
+        <div id="sentiment-indicators-container" class="hidden mt-2">
+          <h4>Key Sentiment Indicators:</h4>
+          <div id="sentiment-indicators" class="chip-container"></div>
+        </div>
+      </div>
+
+      <!-- Summary (TL;DR) -->
+      <div class="card">
+        <div class="card-header-with-badge">
+          <h3>TL;DR (TextRank)</h3>
+          <span id="target-lang-tag" class="lang-tag hidden"></span>
+        </div>
+        <p id="summary-text"></p>
+        <div id="translated-summary-container" class="mt-2 hidden">
+          <div class="sub-label" id="translated-summary-label">Target Translation:</div>
+          <p id="translated-summary-text" class="translated-summary-box"></p>
+        </div>
+      </div>
+
+      <!-- Keywords -->
+      <div class="card">
+        <h3>Keywords</h3>
+        <div id="keywords-container" class="chip-container"></div>
+      </div>
+
+      <!-- Entities -->
+      <div class="card">
+        <h3>Named Entities</h3>
+        <div id="entities-container" class="chip-container"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="card">
+        <div class="stats-header" id="toggle-stats">
+          <h3>Text Statistics</h3>
+          <span class="arrow">▼</span>
+        </div>
+        <div id="stats-content" class="hidden">
+          <div class="stat-row"><span>Words:</span> <span id="stat-words"></span></div>
+          <div class="stat-row"><span>Sentences:</span> <span id="stat-sentences"></span></div>
+          <div class="stat-row"><span>Complexity:</span> <span id="stat-complexity"></span></div>
+          <div id="pos-container" class="mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: GEN-Z SLANG-O-PEDIA & QUICK TRANSLATOR -->
+  <div id="tab-genz" class="tab-content hidden">
+    <!-- Instant Slang Decoder Card -->
+    <div class="card genz-card">
+      <div class="card-header-with-badge">
+        <h3>⚡ Instant Slang Decoder</h3>
+        <span class="badge-pill">Interactive</span>
+      </div>
+      <p class="subtext">Paste any Gen-Z tweet, TikTok line, or slang sentence:</p>
+      <textarea id="standalone-genz-input" placeholder="e.g. No cap, your fit is completely giving main character energy, it’s an absolute serve.">No cap, your fit is completely giving main character energy, it’s an absolute serve.</textarea>
+      <button id="btn-standalone-decode" class="btn-genz">Decode to Normal English</button>
+
+      <div id="standalone-genz-result" class="hidden mt-2">
+        <div class="genz-meter-tag" id="standalone-meter"></div>
+        <div class="sub-label flex-between mt-2">
+          <span>Analyzed Text:</span>
+          <button id="btn-clear-standalone-highlight" class="btn-clear-highlight hidden" title="Clear highlight">✕ Clear</button>
+        </div>
+        <div id="standalone-text-display" class="analyzed-text-box mt-1"></div>
+        <div class="sub-label flex-between mt-2">
+          <span>Detected Slang Terms:</span>
+          <span class="subtext-hint-pill">👉 Click term to highlight</span>
+        </div>
+        <div id="standalone-terms" class="genz-terms-grid mt-1"></div>
+        <div class="sub-label flex-between mt-2">
+          <span>Decoded Plain English:</span>
+          <button id="btn-copy-standalone" class="btn-copy">Copy</button>
+        </div>
+        <div id="standalone-decoded-box" class="decoded-box mt-1"></div>
+      </div>
+    </div>
+
+    <!-- Searchable Slang-o-pedia Dictionary -->
+    <div class="card mt-2">
+      <div class="card-header-with-badge">
+        <h3>📖 Slang-o-pedia Dictionary</h3>
+        <span id="glossary-count" class="badge-count">150+ Terms</span>
+      </div>
+      <input type="text" id="glossary-search-input" placeholder="Search term (e.g. rizz, aura, cooked, fit, serve)..." class="search-input">
+      <div id="glossary-list" class="glossary-container mt-2">
+        <div class="textlens-loader">Loading slang dictionary...</div>
       </div>
     </div>
   </div>

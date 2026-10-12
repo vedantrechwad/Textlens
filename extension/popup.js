@@ -1,18 +1,74 @@
 const API_URL = "http://127.0.0.1:5000/api/analyze";
+const DECODE_URL = "http://127.0.0.1:5000/api/genz-decode";
+const GLOSSARY_URL = "http://127.0.0.1:5000/api/genz-glossary";
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Navigation Tabs
+  const tabAnalyzeBtn = document.getElementById("tab-analyze-btn");
+  const tabGenzBtn = document.getElementById("tab-genz-btn");
+  const tabAnalyze = document.getElementById("tab-analyze");
+  const tabGenz = document.getElementById("tab-genz");
+
+  tabAnalyzeBtn.addEventListener("click", () => {
+    tabAnalyzeBtn.classList.add("active");
+    tabGenzBtn.classList.remove("active");
+    tabAnalyze.classList.remove("hidden");
+    tabGenz.classList.add("hidden");
+  });
+
+  tabGenzBtn.addEventListener("click", () => {
+    tabGenzBtn.classList.add("active");
+    tabAnalyzeBtn.classList.remove("active");
+    tabGenz.classList.remove("hidden");
+    tabAnalyze.classList.add("hidden");
+    loadGlossary();
+  });
+
+  // Tab 1 Elements
   const btnAnalyzeSelection = document.getElementById("btn-analyze-selection");
   const btnAnalyzePage = document.getElementById("btn-analyze-page");
   const btnAnalyzeThread = document.getElementById("btn-analyze-thread");
+  const btnAnalyzeCustom = document.getElementById("btn-analyze-custom");
+  const customTextInput = document.getElementById("custom-text-input");
+  const toggleCustomInput = document.getElementById("toggle-custom-input");
+  const customInputBody = document.getElementById("custom-input-body");
+  const customInputArrow = document.getElementById("custom-input-arrow");
+
   const selectionStatus = document.getElementById("selection-status");
   const toggleStats = document.getElementById("toggle-stats");
-  
   const engineSelect = document.getElementById("sentiment-engine-select");
-  
-  // Load saved preference
-  chrome.storage.local.get(["sentimentEngine"], (result) => {
+  const targetLanguageSelect = document.getElementById("target-language-select");
+
+  const btnNewAnalysis = document.getElementById("btn-new-analysis");
+  const btnBackFromError = document.getElementById("btn-back-from-error");
+  const btnCopyPlainEnglish = document.getElementById("btn-copy-plain-english");
+  const btnClearPopupHighlight = document.getElementById("btn-clear-popup-highlight");
+
+  // Tab 2 Elements (Interactive Decoder & Glossary)
+  const standaloneInput = document.getElementById("standalone-genz-input");
+  const btnStandaloneDecode = document.getElementById("btn-standalone-decode");
+  const standaloneResult = document.getElementById("standalone-genz-result");
+  const standaloneMeter = document.getElementById("standalone-meter");
+  const standaloneTextDisplay = document.getElementById("standalone-text-display");
+  const btnClearStandaloneHighlight = document.getElementById("btn-clear-standalone-highlight");
+  const standaloneTerms = document.getElementById("standalone-terms");
+  const standaloneDecodedBox = document.getElementById("standalone-decoded-box");
+  const btnCopyStandalone = document.getElementById("btn-copy-standalone");
+  const glossarySearch = document.getElementById("glossary-search-input");
+  const glossaryList = document.getElementById("glossary-list");
+
+  let fullGlossary = [];
+  let currentAnalyzedText = "";
+  let activePopupTerm = null;
+  let activeStandaloneTerm = null;
+
+  // Load saved preferences
+  chrome.storage.local.get(["sentimentEngine", "targetLanguage"], (result) => {
     if (result.sentimentEngine) {
       engineSelect.value = result.sentimentEngine;
+    }
+    if (result.targetLanguage) {
+      targetLanguageSelect.value = result.targetLanguage;
     }
   });
 
@@ -20,10 +76,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.storage.local.set({ sentimentEngine: e.target.value });
   });
 
+  targetLanguageSelect.addEventListener("change", (e) => {
+    chrome.storage.local.set({ targetLanguage: e.target.value });
+  });
+
+  // Toggle custom text input box
+  toggleCustomInput.addEventListener("click", () => {
+    const isHidden = customInputBody.classList.toggle("hidden");
+    customInputArrow.textContent = isHidden ? "▶" : "▼";
+  });
+
   let selectedText = "";
 
-  // Check for selected text in the active tab
+  // Check for selected text in active tab
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (!tabs || !tabs[0] || !tabs[0].id) return;
     chrome.scripting.executeScript(
       {
         target: { tabId: tabs[0].id },
@@ -33,8 +100,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (results && results[0] && results[0].result) {
           selectedText = results[0].result.trim();
           if (selectedText.length > 0) {
-            selectionStatus.textContent = "Selected text detected.";
+            selectionStatus.textContent = `"${selectedText.substring(0, 42)}${selectedText.length > 42 ? "..." : ""}"`;
             btnAnalyzeSelection.disabled = false;
+            // Also prefill standalone input for convenience
+            if (standaloneInput) standaloneInput.value = selectedText;
+            // Automatically analyze selected text immediately so Gen-Z words & highlight UI show right away
+            analyzeText(selectedText);
           }
         }
       }
@@ -50,8 +121,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (selectedText) analyzeText(selectedText);
   });
 
+  btnAnalyzeCustom.addEventListener("click", () => {
+    const text = customTextInput.value.trim();
+    if (text) {
+      analyzeText(text);
+    }
+  });
+
   btnAnalyzePage.addEventListener("click", () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) return;
       chrome.scripting.executeScript(
         {
           target: { tabId: tabs[0].id },
@@ -67,26 +146,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnAnalyzeThread.addEventListener("click", () => {
-    // Basic extraction for threads (e.g., getting paragraph texts)
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) return;
       chrome.scripting.executeScript(
         {
           target: { tabId: tabs[0].id },
           function: () => {
-             let selector = 'p, article, .comment, .usertext-body';
-             const host = window.location.hostname;
-             
-             if (host.includes('reddit.com')) {
-               selector = 'shreddit-comment p, .usertext-body, [data-test-id="comment"]';
-             } else if (host.includes('twitter.com') || host.includes('x.com')) {
-               selector = '[data-testid="tweetText"]';
-             } else if (host.includes('quora.com')) {
-               selector = '.q-text.qu-dynamicFontSize, .q-box.qu-mb--tiny';
-             }
-             
-             const elements = document.querySelectorAll(selector);
-             const texts = Array.from(elements).map(el => el.innerText).filter(t => t.trim().length > 0);
-             return texts.join('\\n\\n');
+            let selector = 'p, article, .comment, .usertext-body';
+            const host = window.location.hostname;
+            
+            if (host.includes('reddit.com')) {
+              selector = 'shreddit-comment p, .usertext-body, [data-test-id="comment"]';
+            } else if (host.includes('twitter.com') || host.includes('x.com')) {
+              selector = '[data-testid="tweetText"]';
+            } else if (host.includes('quora.com')) {
+              selector = '.q-text.qu-dynamicFontSize, .q-box.qu-mb--tiny';
+            }
+            
+            const elements = document.querySelectorAll(selector);
+            const texts = Array.from(elements).map(el => el.innerText).filter(t => t.trim().length > 0);
+            return texts.join('\n\n');
           }
         },
         (results) => {
@@ -98,15 +177,179 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  btnNewAnalysis.addEventListener("click", () => {
+    clearPopupHighlight();
+    document.getElementById("results").classList.add("hidden");
+    document.getElementById("controls").classList.remove("hidden");
+  });
+
+  if (btnClearPopupHighlight) {
+    btnClearPopupHighlight.addEventListener("click", () => {
+      clearPopupHighlight();
+    });
+  }
+
+  if (btnClearStandaloneHighlight) {
+    btnClearStandaloneHighlight.addEventListener("click", () => {
+      clearStandaloneHighlight();
+    });
+  }
+
+  btnBackFromError.addEventListener("click", () => {
+    document.getElementById("error").classList.add("hidden");
+    document.getElementById("controls").classList.remove("hidden");
+  });
+
+  btnCopyPlainEnglish.addEventListener("click", () => {
+    const box = document.getElementById("genz-decoded-box");
+    if (box && box.textContent) {
+      navigator.clipboard.writeText(box.textContent).then(() => {
+        const orig = btnCopyPlainEnglish.textContent;
+        btnCopyPlainEnglish.textContent = "Copied!";
+        setTimeout(() => { btnCopyPlainEnglish.textContent = orig; }, 1500);
+      });
+    }
+  });
+
+  // Tab 2: Standalone Slang Decoder Handler
+  btnStandaloneDecode.addEventListener("click", async () => {
+    const text = standaloneInput.value.trim();
+    if (!text) return;
+
+    btnStandaloneDecode.textContent = "Decoding...";
+    btnStandaloneDecode.disabled = true;
+
+    try {
+      const response = await fetch(DECODE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text })
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Decoding failed");
+      }
+
+      const genz = data.genz;
+      clearStandaloneHighlight();
+      standaloneResult.classList.remove("hidden");
+      standaloneMeter.textContent = `Level: ${genz.slang_level} • ${genz.term_count} Slang (${genz.slang_density}% Density)`;
+
+      if (standaloneTextDisplay) {
+        renderTextWithClickableTerms(
+          standaloneTextDisplay,
+          text,
+          genz.detected_terms || [],
+          (term) => activateStandaloneHighlight(term, text, genz.detected_terms || [])
+        );
+      }
+
+      standaloneTerms.innerHTML = "";
+      if (genz.detected_terms && genz.detected_terms.length > 0) {
+        genz.detected_terms.forEach(t => {
+          const item = document.createElement("div");
+          item.className = "genz-term-item interactive-term";
+          item.setAttribute("data-term", t.term);
+          item.innerHTML = `
+            <div class="genz-term-header">
+              <span class="genz-term-name">"${t.term}" ➔ ${t.translation}</span>
+              <span class="genz-term-category">${t.category}</span>
+            </div>
+            <div class="genz-term-def">${t.definition}</div>
+            <button class="btn-highlight-term" type="button" data-term="${t.term}">
+              🖍️ Click to Highlight in Text
+            </button>
+          `;
+          item.addEventListener("click", () => {
+            activateStandaloneHighlight(t.term, text, genz.detected_terms);
+          });
+          standaloneTerms.appendChild(item);
+        });
+      } else {
+        standaloneTerms.innerHTML = `<div style="font-size:11px; color:#64748b;">No recognizable Gen-Z slang detected.</div>`;
+      }
+
+      standaloneDecodedBox.textContent = genz.plain_english;
+    } catch (err) {
+      alert("Failed to decode: Make sure Flask backend is running on http://127.0.0.1:5000");
+    } finally {
+      btnStandaloneDecode.textContent = "Decode to Normal English";
+      btnStandaloneDecode.disabled = false;
+    }
+  });
+
+  btnCopyStandalone.addEventListener("click", () => {
+    if (standaloneDecodedBox && standaloneDecodedBox.textContent) {
+      navigator.clipboard.writeText(standaloneDecodedBox.textContent).then(() => {
+        btnCopyStandalone.textContent = "Copied!";
+        setTimeout(() => { btnCopyStandalone.textContent = "Copy"; }, 1500);
+      });
+    }
+  });
+
+  // Tab 2: Load Glossary
+  async function loadGlossary() {
+    if (fullGlossary.length > 0) return; // Already loaded
+
+    try {
+      const res = await fetch(GLOSSARY_URL);
+      const data = await res.json();
+      if (data.success && data.glossary) {
+        fullGlossary = data.glossary;
+        document.getElementById("glossary-count").textContent = `${fullGlossary.length} Terms`;
+        renderGlossary(fullGlossary);
+      }
+    } catch (err) {
+      glossaryList.innerHTML = `<div style="font-size:11px; color:#64748b; padding:8px;">Start backend at http://127.0.0.1:5000 to load full 150+ slang glossary.</div>`;
+    }
+  }
+
+  function renderGlossary(terms) {
+    glossaryList.innerHTML = "";
+    if (terms.length === 0) {
+      glossaryList.innerHTML = `<div style="font-size:11px; color:#64748b; padding:8px;">No matching slang terms found.</div>`;
+      return;
+    }
+    terms.forEach(item => {
+      const el = document.createElement("div");
+      el.className = "glossary-item";
+      el.innerHTML = `
+        <div class="glossary-item-header">
+          <span class="glossary-item-term">${item.term}</span>
+          <span class="genz-term-category">${item.category}</span>
+        </div>
+        <div class="glossary-item-meaning"><strong>Means:</strong> ${item.translation} — <i>${item.definition}</i></div>
+      `;
+      glossaryList.appendChild(el);
+    });
+  }
+
+  glossarySearch.addEventListener("input", (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    if (!q) {
+      renderGlossary(fullGlossary);
+      return;
+    }
+    const filtered = fullGlossary.filter(t => 
+      t.term.toLowerCase().includes(q) || 
+      t.translation.toLowerCase().includes(q) || 
+      t.category.toLowerCase().includes(q)
+    );
+    renderGlossary(filtered);
+  });
+
+  // Main NLP Analysis
   async function analyzeText(text) {
+    currentAnalyzedText = text;
     document.getElementById("controls").classList.add("hidden");
     document.getElementById("loading").classList.remove("hidden");
     document.getElementById("error").classList.add("hidden");
     document.getElementById("results").classList.add("hidden");
 
     try {
-      // Determine engine
-      const engine = document.getElementById("sentiment-engine-select").value || "vader";
+      const engine = engineSelect.value || "vader";
+      const targetLang = targetLanguageSelect.value || "en";
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -115,12 +358,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           text: text,
           options: {
             sentiment_model: engine,
+            target_language: targetLang,
             sentiment: true,
             summary: true,
             keywords: true,
             entities: true,
             pos: true,
-            statistics: true
+            statistics: true,
+            genz: true,
+            multilingual: true
           }
         })
       });
@@ -135,16 +381,384 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       document.getElementById("loading").classList.add("hidden");
       document.getElementById("error").classList.remove("hidden");
-      document.getElementById("error-msg").textContent = err.message || "Failed to connect to backend.";
-      document.getElementById("controls").classList.remove("hidden");
+      if (err.message && err.message.toLowerCase().includes("fetch")) {
+        document.getElementById("error-msg").textContent = "Cannot connect to backend at http://127.0.0.1:5000. Please make sure 'python app.py' is running.";
+      } else {
+        document.getElementById("error-msg").textContent = err.message || "Failed to connect to backend.";
+      }
     }
+  }
+
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function createTermRegex(term) {
+    const escaped = escapeRegExp(term.trim());
+    const startBound = /^\w/.test(term) ? "\\b" : "";
+    const endBound = /\w$/.test(term) ? "\\b" : "";
+    return new RegExp(`${startBound}${escaped}${endBound}`, "gi");
+  }
+
+  function sendHighlightToActiveTab(term, matchedText, fullText) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) return;
+      const tabId = tabs[0].id;
+      chrome.tabs.sendMessage(tabId, {
+        action: "highlightWordOnPage",
+        term: term,
+        matchedText: matchedText || term,
+        fullText: fullText
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          // If script not yet injected in tab, inject and retry
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ["content.js"]
+          }, () => {
+            chrome.tabs.sendMessage(tabId, {
+              action: "highlightWordOnPage",
+              term: term,
+              matchedText: matchedText || term,
+              fullText: fullText
+            });
+          });
+        }
+      });
+    });
+  }
+
+  function clearPageHighlights() {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) return;
+      chrome.tabs.sendMessage(tabs[0].id, { action: "clearPageHighlights" }, () => {
+        if (chrome.runtime.lastError) {}
+      });
+    });
+  }
+
+  function renderTextWithClickableTerms(container, text, detectedTerms, onTermClick) {
+    container.innerHTML = "";
+    if (!text) return;
+    if (!detectedTerms || detectedTerms.length === 0) {
+      container.textContent = text;
+      return;
+    }
+
+    // Sort terms by length descending to prioritize longer phrases
+    const sorted = [...detectedTerms].sort((a, b) => b.term.length - a.term.length);
+    const matches = [];
+
+    sorted.forEach(t => {
+      const regex = createTermRegex(t.term);
+      let m;
+      while ((m = regex.exec(text)) !== null) {
+        const start = m.index;
+        const end = start + m[0].length;
+        const overlap = matches.some(prev => (start >= prev.start && start < prev.end) || (end > prev.start && end <= prev.end));
+        if (!overlap) {
+          matches.push({
+            start,
+            end,
+            text: m[0],
+            term: t.term
+          });
+        }
+      }
+    });
+
+    matches.sort((a, b) => a.start - b.start);
+
+    let lastIndex = 0;
+    matches.forEach(match => {
+      if (match.start > lastIndex) {
+        container.appendChild(document.createTextNode(text.substring(lastIndex, match.start)));
+      }
+      const span = document.createElement("span");
+      span.className = "genz-inline-term";
+      span.setAttribute("data-term", match.term);
+      span.textContent = match.text;
+      span.title = `Gen-Z Term: "${match.term}" — Click to highlight`;
+      span.addEventListener("click", () => {
+        if (onTermClick) onTermClick(match.term);
+      });
+      container.appendChild(span);
+      lastIndex = match.end;
+    });
+
+    if (lastIndex < text.length) {
+      container.appendChild(document.createTextNode(text.substring(lastIndex)));
+    }
+  }
+
+  function activatePopupHighlight(term, detectedTerms) {
+    if (activePopupTerm === term) {
+      clearPopupHighlight();
+      return;
+    }
+
+    activePopupTerm = term;
+
+    const display = document.getElementById("analyzed-text-display");
+    let matchCount = 0;
+    let firstMatchEl = null;
+
+    if (display) {
+      display.querySelectorAll(".genz-inline-term").forEach(span => {
+        if (span.getAttribute("data-term").toLowerCase() === term.toLowerCase()) {
+          span.classList.add("popup-highlight-active");
+          matchCount++;
+          if (!firstMatchEl) firstMatchEl = span;
+        } else {
+          span.classList.remove("popup-highlight-active");
+        }
+      });
+      if (firstMatchEl) {
+        firstMatchEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    const termsContainer = document.getElementById("genz-terms-container");
+    let targetCard = null;
+    if (termsContainer) {
+      termsContainer.querySelectorAll(".genz-term-item").forEach(card => {
+        const cardTerm = card.getAttribute("data-term");
+        const btn = card.querySelector(".btn-highlight-term");
+        if (cardTerm && cardTerm.toLowerCase() === term.toLowerCase()) {
+          card.classList.add("active-term");
+          if (btn) {
+            btn.classList.add("active");
+            btn.innerHTML = `✨ Highlighting in Text (Active)`;
+          }
+          targetCard = card;
+        } else {
+          card.classList.remove("active-term");
+          if (btn) {
+            btn.classList.remove("active");
+            btn.innerHTML = `🖍️ Click to Highlight in Text`;
+          }
+        }
+      });
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    const banner = document.getElementById("highlight-status-banner");
+    const statusText = document.getElementById("highlight-status-text");
+    const clearBtn = document.getElementById("btn-clear-popup-highlight");
+    if (banner && statusText) {
+      banner.classList.remove("hidden");
+      statusText.innerHTML = `✨ Highlighted <strong>"${term}"</strong> (${matchCount || 1} in text) & on webpage`;
+    }
+    if (clearBtn) clearBtn.classList.remove("hidden");
+
+    const termObj = detectedTerms.find(t => t.term.toLowerCase() === term.toLowerCase());
+    const matchedText = termObj ? termObj.matched_text : term;
+    sendHighlightToActiveTab(term, matchedText, currentAnalyzedText);
+  }
+
+  function clearPopupHighlight() {
+    activePopupTerm = null;
+    const display = document.getElementById("analyzed-text-display");
+    if (display) {
+      display.querySelectorAll(".genz-inline-term").forEach(span => {
+        span.classList.remove("popup-highlight-active");
+      });
+    }
+
+    const termsContainer = document.getElementById("genz-terms-container");
+    if (termsContainer) {
+      termsContainer.querySelectorAll(".genz-term-item").forEach(card => {
+        card.classList.remove("active-term");
+        const btn = card.querySelector(".btn-highlight-term");
+        if (btn) {
+          btn.classList.remove("active");
+          btn.innerHTML = `🖍️ Click to Highlight in Text`;
+        }
+      });
+    }
+
+    const banner = document.getElementById("highlight-status-banner");
+    if (banner) banner.classList.add("hidden");
+
+    const clearBtn = document.getElementById("btn-clear-popup-highlight");
+    if (clearBtn) clearBtn.classList.add("hidden");
+
+    clearPageHighlights();
+  }
+
+  function activateStandaloneHighlight(term, text, detectedTerms) {
+    if (activeStandaloneTerm === term) {
+      clearStandaloneHighlight();
+      return;
+    }
+
+    activeStandaloneTerm = term;
+
+    const display = document.getElementById("standalone-text-display");
+    let firstEl = null;
+    if (display) {
+      display.querySelectorAll(".genz-inline-term").forEach(span => {
+        if (span.getAttribute("data-term").toLowerCase() === term.toLowerCase()) {
+          span.classList.add("popup-highlight-active");
+          if (!firstEl) firstEl = span;
+        } else {
+          span.classList.remove("popup-highlight-active");
+        }
+      });
+      if (firstEl) {
+        firstEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    const termsContainer = document.getElementById("standalone-terms");
+    let targetCard = null;
+    if (termsContainer) {
+      termsContainer.querySelectorAll(".genz-term-item").forEach(card => {
+        const cardTerm = card.getAttribute("data-term");
+        const btn = card.querySelector(".btn-highlight-term");
+        if (cardTerm && cardTerm.toLowerCase() === term.toLowerCase()) {
+          card.classList.add("active-term");
+          if (btn) {
+            btn.classList.add("active");
+            btn.innerHTML = `✨ Highlighting in Text (Active)`;
+          }
+          targetCard = card;
+        } else {
+          card.classList.remove("active-term");
+          if (btn) {
+            btn.classList.remove("active");
+            btn.innerHTML = `🖍️ Click to Highlight in Text`;
+          }
+        }
+      });
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    const clearBtn = document.getElementById("btn-clear-standalone-highlight");
+    if (clearBtn) clearBtn.classList.remove("hidden");
+
+    const termObj = detectedTerms.find(t => t.term.toLowerCase() === term.toLowerCase());
+    const matchedText = termObj ? termObj.matched_text : term;
+    sendHighlightToActiveTab(term, matchedText, text);
+  }
+
+  function clearStandaloneHighlight() {
+    activeStandaloneTerm = null;
+    const display = document.getElementById("standalone-text-display");
+    if (display) {
+      display.querySelectorAll(".genz-inline-term").forEach(span => {
+        span.classList.remove("popup-highlight-active");
+      });
+    }
+    const termsContainer = document.getElementById("standalone-terms");
+    if (termsContainer) {
+      termsContainer.querySelectorAll(".genz-term-item").forEach(card => {
+        card.classList.remove("active-term");
+        const btn = card.querySelector(".btn-highlight-term");
+        if (btn) {
+          btn.classList.remove("active");
+          btn.innerHTML = `🖍️ Click to Highlight in Text`;
+        }
+      });
+    }
+    const clearBtn = document.getElementById("btn-clear-standalone-highlight");
+    if (clearBtn) clearBtn.classList.add("hidden");
+    clearPageHighlights();
   }
 
   function renderResults(data) {
     document.getElementById("loading").classList.add("hidden");
     document.getElementById("results").classList.remove("hidden");
 
-    // Sentiment
+    clearPopupHighlight();
+
+    // 0. Analyzed Selected Text Display & Highlighting
+    const analyzedTextDisplay = document.getElementById("analyzed-text-display");
+    const analyzedTextBadge = document.getElementById("analyzed-text-badge");
+    const detectedTerms = (data.genz && data.genz.detected_terms) ? data.genz.detected_terms : [];
+
+    if (analyzedTextDisplay) {
+      const words = currentAnalyzedText.trim().split(/\s+/).filter(Boolean).length;
+      if (analyzedTextBadge) {
+        analyzedTextBadge.textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+      }
+      renderTextWithClickableTerms(
+        analyzedTextDisplay,
+        currentAnalyzedText,
+        detectedTerms,
+        (term) => activatePopupHighlight(term, detectedTerms)
+      );
+    }
+
+    // 1. Language Detection & Translation Banner
+    const langContainer = document.getElementById("language-badge-container");
+    langContainer.innerHTML = "";
+    const transBanner = document.getElementById("translation-banner");
+
+    if (data.language) {
+      const langBadge = document.createElement("span");
+      langBadge.className = "language-badge";
+      langBadge.innerHTML = `🌐 ${data.language.detected_name} (${Math.round(data.language.confidence * 100)}%)`;
+      langContainer.appendChild(langBadge);
+
+      if (data.language.was_translated && data.language.translated_to_english) {
+        transBanner.classList.remove("hidden");
+        document.getElementById("translation-banner-title").textContent = 
+          `${data.language.detected_name} Translated to English`;
+        document.getElementById("translation-banner-details").textContent = 
+          `Auto-translated to English so all NLP pipelines (sentiment, summary, entities) operate accurately.`;
+        document.getElementById("translated-to-english-text").textContent = 
+          data.language.translated_to_english;
+      } else {
+        transBanner.classList.add("hidden");
+      }
+    } else {
+      transBanner.classList.add("hidden");
+    }
+
+    // 2. Gen-Z Slang Decoder (DISPLAYED FIRST AND PROMINENTLY)
+    const genzCard = document.getElementById("genz-card");
+    const genzTermsContainer = document.getElementById("genz-terms-container");
+    const genzDecodedBox = document.getElementById("genz-decoded-box");
+    const genzCountBadge = document.getElementById("genz-count-badge");
+    const genzLevelTag = document.getElementById("genz-level-tag");
+
+    if (data.genz && data.genz.has_slang && data.genz.detected_terms.length > 0) {
+      genzCard.classList.remove("hidden");
+      genzCountBadge.textContent = `${data.genz.term_count} Slang ${data.genz.term_count === 1 ? 'Term' : 'Terms'}`;
+      genzLevelTag.textContent = `Intensity: ${data.genz.slang_level} • ${data.genz.slang_density}% Density`;
+      genzTermsContainer.innerHTML = "";
+
+      data.genz.detected_terms.forEach(t => {
+        const item = document.createElement("div");
+        item.className = "genz-term-item interactive-term";
+        item.setAttribute("data-term", t.term);
+        item.innerHTML = `
+          <div class="genz-term-header">
+            <span class="genz-term-name">"${t.term}" ➔ ${t.translation}</span>
+            <span class="genz-term-category">${t.category}</span>
+          </div>
+          <div class="genz-term-def">${t.definition}</div>
+          <button class="btn-highlight-term" type="button" data-term="${t.term}">
+            🖍️ Click to Highlight in Text
+          </button>
+        `;
+        item.addEventListener("click", () => {
+          activatePopupHighlight(t.term, data.genz.detected_terms);
+        });
+        genzTermsContainer.appendChild(item);
+      });
+
+      genzDecodedBox.textContent = data.genz.plain_english;
+    } else {
+      genzCard.classList.add("hidden");
+    }
+
+    // 3. Sentiment
     if (data.sentiment) {
       const lbl = document.getElementById("sentiment-label");
       lbl.textContent = data.sentiment.label;
@@ -158,8 +772,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         indCont.classList.remove("hidden");
         data.sentiment.indicators.forEach(i => {
           const s = document.createElement("span");
-          s.className = "chip";
-          s.textContent = i;
+          // Highlight if indicator is a recognized slang term
+          const isSlang = data.genz && data.genz.detected_terms && data.genz.detected_terms.some(t => t.term.toLowerCase() === i.toLowerCase());
+          s.className = "chip" + (isSlang ? " indicator-slang" : "");
+          s.textContent = isSlang ? `✨ ${i}` : i;
           indBox.appendChild(s);
         });
       } else {
@@ -167,12 +783,32 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     }
 
-    // Summary
+    // 4. Summary & Target Language Translation
+    const summaryText = document.getElementById("summary-text");
+    const transSummaryCont = document.getElementById("translated-summary-container");
+    const transSummaryText = document.getElementById("translated-summary-text");
+    const transSummaryLabel = document.getElementById("translated-summary-label");
+    const targetLangTag = document.getElementById("target-lang-tag");
+
     if (data.summary) {
-      document.getElementById("summary-text").textContent = data.summary;
+      summaryText.textContent = data.summary;
+    } else {
+      summaryText.textContent = "Text is too brief for an extractive summary.";
     }
 
-    // Keywords
+    if (data.translated_summary) {
+      transSummaryCont.classList.remove("hidden");
+      targetLangTag.classList.remove("hidden");
+      const targetLangName = targetLanguageSelect.options[targetLanguageSelect.selectedIndex].text;
+      targetLangTag.textContent = targetLangName.split(' ')[0];
+      transSummaryLabel.textContent = `Translated TL;DR (${targetLangName}):`;
+      transSummaryText.textContent = data.translated_summary;
+    } else {
+      transSummaryCont.classList.add("hidden");
+      targetLangTag.classList.add("hidden");
+    }
+
+    // 5. Keywords
     if (data.keywords) {
       const kc = document.getElementById("keywords-container");
       kc.innerHTML = "";
@@ -184,7 +820,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    // Entities
+    // 6. Entities
     if (data.entities) {
       const ec = document.getElementById("entities-container");
       ec.innerHTML = "";
@@ -197,17 +833,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
     }
 
-    // Stats
+    // 7. Stats
     if (data.statistics) {
       document.getElementById("stat-words").textContent = data.statistics.words;
       document.getElementById("stat-sentences").textContent = data.statistics.sentences;
       document.getElementById("stat-complexity").textContent = data.statistics.readingComplexity;
     }
     
-    // POS
+    // 8. POS
     if (data.pos) {
       const pc = document.getElementById("pos-container");
-      pc.innerHTML = `<div>Nouns: ${data.pos.Nouns} | Verbs: ${data.pos.Verbs} | Adjectives: ${data.pos.Adjectives}</div>`;
+      pc.innerHTML = `<div>Nouns: ${data.pos.Nouns || 0} | Verbs: ${data.pos.Verbs || 0} | Adjectives: ${data.pos.Adjectives || 0}</div>`;
     }
   }
 });

@@ -1,92 +1,206 @@
 #textlens-floating-btn {
   position: absolute;
   z-index: 999999;
-  width: 28px;
-  height: 28px;
-  background-color: #4361ee;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 3px 10px rgba(99, 102, 241, 0.4);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-family: sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 700;
   border: 2px solid white;
-  transition: transform 0.1s;
+  transition: all 0.15s ease;
 }
 #textlens-floating-btn:hover {
-  transform: scale(1.1);
+  transform: scale(1.15);
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.5);
 }
 
 #textlens-modal {
   position: absolute;
   z-index: 999999;
-  width: 300px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  width: 350px;
+  max-width: calc(100vw - 30px);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.08);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #333;
+  color: #1e293b;
   overflow: hidden;
-  border: 1px solid #e9ecef;
+  border: 1px solid #e2e8f0;
+  animation: textlensFadeIn 0.18s ease-out;
+}
+
+@keyframes textlensFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 #textlens-modal-header {
-  background: #f8f9fa;
-  padding: 10px 12px;
-  border-bottom: 1px solid #e9ecef;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 #textlens-modal-header h4 {
   margin: 0;
-  font-size: 14px;
-  color: #2c3e50;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 #textlens-close-btn {
   cursor: pointer;
-  font-size: 16px;
-  color: #6c757d;
+  font-size: 18px;
+  color: #94a3b8;
   line-height: 1;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+#textlens-close-btn:hover {
+  color: #0f172a;
+  background: #e2e8f0;
 }
 
 #textlens-modal-body {
-  padding: 12px;
-  font-size: 13px;
-  max-height: 400px;
+  padding: 12px 14px;
+  font-size: 12px;
+  max-height: 440px;
   overflow-y: auto;
+  line-height: 1.45;
 }
 
 .textlens-loader {
   text-align: center;
-  padding: 20px;
-  color: #6c757d;
+  padding: 24px;
+  color: #64748b;
+  font-size: 12px;
 }
 
+/* Gen-Z Slang Card (Primary highlight) */
+.textlens-genz-card {
+  background: #faf5ff;
+  border: 1.5px solid #d8b4fe;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(168, 85, 247, 0.08);
+}
+.textlens-genz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.textlens-genz-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b21a8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.textlens-genz-badge {
+  font-size: 10px;
+  background: linear-gradient(135deg, #7e22ce 0%, #9333ea 100%);
+  color: white;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.textlens-genz-meter {
+  font-size: 10px;
+  color: #7e22ce;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.textlens-decoded-text {
+  font-size: 12px;
+  color: #1e1b4b;
+  background: #ffffff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e9d5ff;
+  margin-top: 6px;
+  line-height: 1.45;
+  user-select: text;
+}
+.textlens-decoded-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #7e22ce;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.textlens-btn-copy {
+  background: #ede9fe;
+  color: #6b21a8;
+  border: none;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.textlens-btn-copy:hover {
+  background: #ddd6fe;
+}
+
+/* Sections */
 .textlens-section {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #f1f5f9;
 }
 .textlens-section h5 {
-  margin: 0 0 4px 0;
-  font-size: 12px;
+  margin: 0 0 5px 0;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: #6c757d;
+  letter-spacing: 0.5px;
+  color: #64748b;
 }
+
 .textlens-badge {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
   text-transform: uppercase;
 }
-.textlens-badge.positive { background-color: #d4edda; color: #155724; }
-.textlens-badge.negative { background-color: #f8d7da; color: #721c24; }
-.textlens-badge.neutral { background-color: #e2e3e5; color: #383d41; }
+.textlens-badge.positive { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.textlens-badge.negative { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.textlens-badge.neutral { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+.textlens-lang-badge {
+  display: inline-block;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  border: 1px solid #bae6fd;
+}
 
 .textlens-chips {
   display: flex;
@@ -94,9 +208,76 @@
   gap: 4px;
 }
 .textlens-chip {
-  background: #e9ecef;
+  background: #ffffff;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 11px;
-  color: #495057;
+  font-size: 10px;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.textlens-chip.slang {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #d8b4fe;
+  font-weight: 600;
+}
+
+/* Interactive Slang Chips in Floating Modal */
+.textlens-chip.slang.interactive-modal-slang {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.textlens-chip.slang.interactive-modal-slang:hover {
+  background: #f3e8ff;
+  border-color: #9333ea;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(147, 51, 234, 0.2);
+}
+
+/* In-Page Web Highlighting for Selected Slang */
+mark.textlens-web-highlight {
+  background: #fef08a !important;
+  background: linear-gradient(120deg, #fef08a 0%, #f472b6 60%, #c084fc 100%) !important;
+  color: #1e1b4b !important;
+  font-weight: 700 !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 0 2px #9333ea, 0 3px 10px rgba(147, 51, 234, 0.35) !important;
+  display: inline !important;
+  position: relative !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  animation: textlensFlashPulse 1.2s ease-in-out infinite alternate !important;
+}
+
+mark.textlens-web-highlight::before {
+  content: "🔮 " attr(data-term);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #581c87;
+  color: #ffffff;
+  font-size: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 1000000;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+@keyframes textlensFlashPulse {
+  0% {
+    box-shadow: 0 0 0 2px #9333ea, 0 0 6px rgba(147, 51, 234, 0.4);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 0 4px #ec4899, 0 0 16px rgba(236, 72, 153, 0.7);
+    transform: scale(1.03);
+  }
 }

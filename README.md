@@ -8,13 +8,18 @@ This project was built for an academic NLP course to demonstrate traditional NLP
 
 ## Features
 
-- **Analyze Selected Text**: Highlight text, right-click, and analyze.
-- **Analyze Page/Thread**: Extract visible text from articles or discussion threads.
-- **Sentiment Analysis**: Classification (Positive/Negative) with confidence scores and key indicators (using Linear SVM + TF-IDF).
-- **Extractive Summarization**: TextRank algorithm built from scratch using cosine similarity and PageRank.
+- **Gen-Z Lingo to Normal English Decoder**: Detects 100+ Gen-Z slang terms, brainrot phrases, and social media acronyms (`bussin`, `no cap`, `rizz`, `cooked`, `slay`, `crash out`, `delulu`, etc.), displays plain English definitions, and translates sentences into Standard English.
+- **Slang-Aware Sentiment Analysis**: VADER lexicon calibrated with Gen-Z slang sentiment weights (scoring `bussin` and `goated` as positive, and `cap` and `cooked` as negative) with highlighted key indicators.
+- **Multilingual Support**:
+  - **Auto Language Detection**: Identifies 50+ languages (French, Spanish, Hindi, German, Japanese, Chinese, etc.) with confidence scores.
+  - **Foreign Text to English Translation**: Seamlessly translates foreign text into English so classical NLP pipelines (sentiment, summarization, keywords, NER) function on any language.
+  - **Target Language Summary Translation**: Translate the generated TL;DR summary into user-selected target languages (Spanish, French, Hindi, German, Japanese, etc.).
+- **Analyze Selected Text / Quick Input**: Highlight text, right-click, or type/paste text directly in the extension popup.
+- **Analyze Page/Thread**: Extract visible text from articles or discussion threads (Reddit, X/Twitter, Quora).
+- **Extractive Summarization**: TextRank algorithm built using cosine similarity and PageRank.
 - **Keyword Extraction**: Unigram and bigram extraction using TF-IDF.
 - **Named Entity Recognition**: Identifies organizations, people, and locations using spaCy.
-- **Text Statistics**: Basic character/word counts and POS (Part of Speech) tagging distributions.
+- **Text Statistics**: Basic character/word counts, readability complexity, and POS (Part of Speech) tagging distributions.
 
 ## Architecture
 
@@ -25,21 +30,23 @@ Chrome Extension (Manifest V3)
        ▼
 Flask Backend (Python)
        │
+       ├─► Language Detection & Auto-Translation (langdetect, deep-translator)
+       ├─► Gen-Z Slang Decoding & Standard English Translation
        ├─► Preprocessing (Tokenization, Lemmatization, Stopwords)
-       ├─► Sentiment Classification (Linear SVM)
+       ├─► Slang-Aware Sentiment Analysis (VADER / DistilBERT)
        ├─► Summarization (TextRank Graph Algorithm)
        ├─► NER & POS (spaCy, NLTK)
        │
        ▼
-JSON Response
+JSON Response (Language, Slang Decoder, Sentiment, TL;DR, Keywords, Entities)
 ```
 
 ## Technology Stack
 
 - **Frontend**: HTML, CSS, Vanilla JavaScript, Chrome Extension Manifest V3.
 - **Backend**: Python, Flask, Flask-CORS.
-- **NLP Libraries**: `nltk`, `spacy`, `scikit-learn`, `networkx`.
-- **Machine Learning**: TF-IDF Vectorization, Linear SVM.
+- **NLP & Multilingual**: `nltk`, `spacy`, `scikit-learn`, `networkx`, `deep-translator`, `langdetect`.
+- **Machine Learning & Lexicons**: TF-IDF Vectorization, Linear SVM, VADER + Gen-Z Sentiment Lexicon.
 
 ## Dataset & Model Training
 
