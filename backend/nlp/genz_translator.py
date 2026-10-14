@@ -1185,6 +1185,203 @@ def _build_regex_pattern(term: str) -> str:
     return r'(?<![A-Za-z0-9])' + escaped + r'(?![A-Za-z0-9])'
 
 
+# Disambiguation Guards for Polysemous / Dual-Use Slang Terms
+
+# 1. 'tea' (Beverage vs Gossip)
+BEVERAGE_PRE_REGEX = re.compile(
+    r'\b(matcha|iced|ice|hot|cold|warm|green|black|herbal|chai|boba|milk|earl\s+grey|peppermint|chamomile|jasmine|bubble|fruit|lemon|sweet|ginger|mint|oolong|hibiscus|rooibos|darjeeling|sencha|white|loose\s+leaf|cup\s+of|mug\s+of|pot\s+of|glass\s+of|brewing|brew|drank|drinking)\s+$',
+    re.IGNORECASE
+)
+BEVERAGE_POST_REGEX = re.compile(
+    r'^\s+\b(bag|bags|leaf|leaves|kettle|pot|cup|latte|tree|plantation)\b',
+    re.IGNORECASE
+)
+
+# 2. 'cap' / 'capping' (Headwear/Lid vs Lying)
+LITERAL_CAP_PRE_REGEX = re.compile(
+    r'\b(baseball|bottle|swim|shower|lens|pen|knee|salary|gas|capital|hub|ice|market|fitting)\s+$',
+    re.IGNORECASE
+)
+LITERAL_CAP_POST_REGEX = re.compile(
+    r'^\s+\b(hat|size|visor|strap|closure)\b',
+    re.IGNORECASE
+)
+
+# 3. 'cooked' (Culinary food preparation vs Doomed / ruined)
+CULINARY_COOKED_PRE_REGEX = re.compile(
+    r'\b(slow|slowly|fresh|freshly|partially|well|fully|properly|evenly|under|over|home|deep|pressure|pan|oven|steam|steamed|flame|wood|kettle|perfectly|lightly|thoroughly|chef|cook|baker|caterer)\s+$',
+    re.IGNORECASE
+)
+CULINARY_COOKED_POST_REGEX = re.compile(
+    r'^\s+(for\s+\w+\s+)?(us|me|him|her|them|everyone|someone|friends|family)?\s*'
+    r'(a\s+|an\s+|the\s+|some\s+|our\s+|my\s+|his\s+|her\s+|their\s+|fresh\s+|delicious\s+|good\s+|hot\s+|big\s+|nice\s+|tasty\s+)?'
+    r'(dinner|lunch|breakfast|meal|food|meat|steak|chicken|pasta|rice|beef|pork|fish|egg|eggs|soup|vegetables|veggies|curry|sauce|potatoes|dish|bacon|turkey|salmon|shrimp|noodles|pizza|burger|burgers|pie|bread|supper|beans|tofu|mushrooms|sausage|lobster|crab|ribs|stew|medium|rare|well-done|well\s+done|thoroughly|evenly|crispy|al\s+dente|at\s+\d+|in\s+the\s+oven|on\s+the\s+stove|with\s+(olive\s+)?oil|with\s+butter|to\s+perfection|for\s+\d+\s+(hours|minutes|mins|hrs))\b',
+    re.IGNORECASE
+)
+
+# 4. 'fit' / 'fits' (Fitness / sizing vs Outfit)
+LITERAL_FIT_PRE_REGEX = re.compile(
+    r'\b(stay|staying|keep|keeping|physically|aerobic|cardio|don\'t|doesn\'t|didn\'t|won\'t|can\'t|cannot|tight|snug|perfect|to)\s+$',
+    re.IGNORECASE
+)
+LITERAL_FIT_POST_REGEX = re.compile(
+    r'^\s+\b(into|in|together|me|you|him|her|them|through|for)\b',
+    re.IGNORECASE
+)
+
+# 5. 'mid' (Temporal prefix / middle vs Mediocre)
+LITERAL_MID_POST_REGEX = re.compile(
+    r'^(?:[-–]\w+|\s+\b(morning|day|afternoon|night|year|season|century|december|january|february|march|april|may|june|july|august|september|october|november)\b)',
+    re.IGNORECASE
+)
+
+# 6. 'salty' (Salt taste vs Irritated / bitter mood)
+LITERAL_SALTY_PRE_REGEX = re.compile(
+    r'\b(tastes|tasting|smells|smelling|too|slightly|overly|extra)\s+$',
+    re.IGNORECASE
+)
+LITERAL_SALTY_POST_REGEX = re.compile(
+    r'^\s+\b(water|sea|ocean|food|chips|popcorn|pretzel|pretzels|nuts|soup|broth|butter|caramel|cracker|crackers|taste|flavor)\b',
+    re.IGNORECASE
+)
+
+# 7. 'snack' (Food vs Attractive person)
+LITERAL_SNACK_PRE_REGEX = re.compile(
+    r'\b(eat|ate|eating|eaten|have|had|having|healthy|quick|midnight|afternoon|morning|sweet|salty|crunchy|fruit|packaged)\s+$',
+    re.IGNORECASE
+)
+LITERAL_SNACK_POST_REGEX = re.compile(
+    r'^\s+\b(bar|bars|pack|packs|time|break|food|machine|aisle)\b',
+    re.IGNORECASE
+)
+
+# 8. 'slaps' (Physical hand strike vs Great song/vibe)
+LITERAL_SLAPS_PRE_REGEX = re.compile(
+    r'\b(physically|violently|angrily|accidentally)\s+$',
+    re.IGNORECASE
+)
+LITERAL_SLAPS_POST_REGEX = re.compile(
+    r'^\s+\b(him|her|me|them|us|his|her|my|the\s+face|the\s+table|the\s+desk|the\s+hand)\b',
+    re.IGNORECASE
+)
+
+# 9. 'drip' / 'drippy' (Liquid leak vs Fashion swagger)
+LITERAL_DRIP_PRE_REGEX = re.compile(
+    r'\b(faucet|tap|water|pipe|leak|leaking|oil|rain|coffee|iv|slow|slowly|constant)\s+$',
+    re.IGNORECASE
+)
+LITERAL_DRIP_POST_REGEX = re.compile(
+    r'^\s+\b(of\s+water|from\s+the|pan|coffee|drop|drops|leak)\b',
+    re.IGNORECASE
+)
+
+# 10. 'flex' / 'flexing' (Muscle tensing / bending vs Boasting)
+LITERAL_FLEX_POST_REGEX = re.compile(
+    r'^\s+(?:his|her|their|my|your)?\s*\b(muscles?|biceps?|joints?|body|wings?|feet|legs?|quads?|abs|spine)\b',
+    re.IGNORECASE
+)
+
+# 11. 'ratio' (Math proportion vs Social media reply loss)
+LITERAL_RATIO_PRE_REGEX = re.compile(
+    r'\b(aspect|gear|compression|signal-to-noise|debt-to-income|pe|price-to-earnings|golden|student-to-teacher|mathematical|1:|2:|3:|4:|5:|10:)\s+$',
+    re.IGNORECASE
+)
+LITERAL_RATIO_POST_REGEX = re.compile(
+    r'^\s+\b(of\s+\d+|is\s+\d+|to\s+\d+|\d+:\d+)\b',
+    re.IGNORECASE
+)
+
+# 12. 'bet' (Gambling wager vs Affirmation / deal)
+LITERAL_BET_PRE_REGEX = re.compile(
+    r'\b(placed|place|placing|make|making|lost|won|sports|casino|poker|dollar|\$)\s+(a\s+)?$',
+    re.IGNORECASE
+)
+LITERAL_BET_POST_REGEX = re.compile(
+    r'^\s+(\$|\d+|dollars?|cents?|on\s+the|against|with\s+\w+\s+that)\b',
+    re.IGNORECASE
+)
+
+# 13. 'shook' (Physical shake vs Astonished)
+LITERAL_SHOOK_POST_REGEX = re.compile(
+    r'^\s+\b(hands?|his\s+head|her\s+head|my\s+head|their\s+head|the\s+bottle|the\s+can|it\s+up)\b',
+    re.IGNORECASE
+)
+
+# 14. 'serve' / 'serving' (Food / tennis / military vs Stunning look)
+LITERAL_SERVE_POST_REGEX = re.compile(
+    r'^\s+\b(the\s+ball|an\s+ace|dinner|lunch|breakfast|food|drinks|the\s+customer|the\s+guests|in\s+the\s+military|in\s+the\s+army|in\s+the\s+navy|time\s+in\s+prison|sentences?)\b',
+    re.IGNORECASE
+)
+
+
+def _is_valid_slang_match(term: str, text: str, start: int, end: int) -> bool:
+    """
+    Validates whether an ambiguous term is genuinely used as slang or as its
+    literal everyday English meaning. Returns False if literal context is detected.
+    """
+    term_lower = term.lower()
+    pre_text = text[:start]
+    post_text = text[end:]
+
+    if term_lower == "tea":
+        if BEVERAGE_PRE_REGEX.search(pre_text) or BEVERAGE_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower in ("cap", "capping"):
+        if LITERAL_CAP_PRE_REGEX.search(pre_text) or LITERAL_CAP_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "cooked":
+        if CULINARY_COOKED_PRE_REGEX.search(pre_text) or CULINARY_COOKED_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower in ("fit", "fits"):
+        if LITERAL_FIT_PRE_REGEX.search(pre_text) or LITERAL_FIT_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "mid":
+        if LITERAL_MID_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "salty":
+        if LITERAL_SALTY_PRE_REGEX.search(pre_text) or LITERAL_SALTY_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "snack":
+        if LITERAL_SNACK_PRE_REGEX.search(pre_text) or LITERAL_SNACK_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "slaps":
+        if LITERAL_SLAPS_PRE_REGEX.search(pre_text) or LITERAL_SLAPS_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower in ("drip", "drippy"):
+        if LITERAL_DRIP_PRE_REGEX.search(pre_text) or LITERAL_DRIP_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower in ("flex", "flexing"):
+        if LITERAL_FLEX_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "ratio":
+        if LITERAL_RATIO_PRE_REGEX.search(pre_text) or LITERAL_RATIO_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "bet":
+        if LITERAL_BET_PRE_REGEX.search(pre_text) or LITERAL_BET_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower == "shook":
+        if LITERAL_SHOOK_POST_REGEX.search(post_text):
+            return False
+
+    elif term_lower in ("serve", "serving"):
+        if LITERAL_SERVE_POST_REGEX.search(post_text):
+            return False
+
+    return True
+
+
 def detect_slang(text: str) -> List[Dict[str, Any]]:
     """
     Scans the text for all known Gen-Z slang terms, prioritizing longer expressions first.
@@ -1205,7 +1402,7 @@ def detect_slang(text: str) -> List[Dict[str, Any]]:
         for match in re.finditer(pattern, text, re.IGNORECASE):
             start, end = match.span()
             overlap = any(s <= start < e or s < end <= e for s, e in matched_spans)
-            if not overlap:
+            if not overlap and _is_valid_slang_match(term, text, start, end):
                 matched_spans.append((start, end))
                 original_snippet = text[start:end]
                 meta = GENZ_DICTIONARY[term]
@@ -1235,6 +1432,7 @@ def decode_genz_text(text: str) -> Dict[str, Any]:
             "original": text,
             "plain_english": text,
             "detected_terms": [],
+            "all_spans": [],
             "term_count": 0,
             "has_slang": False,
             "slang_density": 0,
@@ -1250,6 +1448,7 @@ def decode_genz_text(text: str) -> Dict[str, Any]:
             "original": text,
             "plain_english": text,
             "detected_terms": [],
+            "all_spans": [],
             "term_count": 0,
             "has_slang": False,
             "slang_density": 0,
@@ -1280,26 +1479,34 @@ def decode_genz_text(text: str) -> Dict[str, Any]:
     else:
         level = "Light Gen-Z Slang (2/10)"
 
-    # Provide clean unique summary of terms for the UI
+    # Provide clean unique summary of terms for the UI with spans
     unique_terms = []
-    seen = set()
+    term_map = {}
     for item in detected:
         t = item["term"]
-        if t not in seen:
-            seen.add(t)
-            unique_terms.append({
+        span = [item["start"], item["end"]]
+        if t not in term_map:
+            term_info = {
                 "term": t,
                 "matched_text": item["matched_text"],
                 "translation": item["translation"],
                 "definition": item["definition"],
                 "category": item["category"],
-                "sentiment_score": item["sentiment_score"]
-            })
+                "sentiment_score": item["sentiment_score"],
+                "spans": [span],
+                "occurrences": 1
+            }
+            term_map[t] = term_info
+            unique_terms.append(term_info)
+        else:
+            term_map[t]["spans"].append(span)
+            term_map[t]["occurrences"] += 1
 
     return {
         "original": text,
         "plain_english": plain_english,
         "detected_terms": unique_terms,
+        "all_spans": [{"term": item["term"], "start": item["start"], "end": item["end"], "matched_text": item["matched_text"]} for item in detected],
         "term_count": slang_count,
         "has_slang": True,
         "slang_density": density,

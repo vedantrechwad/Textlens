@@ -52,3 +52,39 @@ def test_language_detection():
     assert lang_info["is_english"] is False
     assert lang_info["name"] == "French"
 
+
+def test_contextual_slang_distinction():
+    from backend.nlp.genz_translator import decode_genz_text
+    sentence = "I was literally sipping my iced matcha tea while Sarah spilled the absolute tea about why her situationship ended."
+    result = decode_genz_text(sentence)
+    assert result["has_slang"] is True
+    terms = {t["term"]: t for t in result["detected_terms"]}
+    assert "tea" in terms
+    assert len(terms["tea"]["spans"]) == 1
+    start, end = terms["tea"]["spans"][0]
+    assert sentence[start:end].lower() == "tea"
+    assert start > 50, "Only gossip tea should be matched, not beverage tea at the start"
+    assert "iced matcha tea" in result["plain_english"]
+    assert "gossip and juicy scoop" in result["plain_english"]
+
+
+def test_all_polysemous_slang_disambiguation():
+    from backend.nlp.genz_translator import decode_genz_text
+    test_cases = [
+        ("I cooked dinner for my friends, but bro I am cooked for the finals tomorrow.", "cooked", "I cooked dinner"),
+        ("He was wearing a baseball cap while telling a story that was pure cap.", "cap", "baseball cap"),
+        ("I go to the gym to stay fit, but that fit today is fire.", "fit", "stay fit"),
+        ("The salty soup made me thirsty, but he was salty about losing the match.", "salty", "salty soup"),
+        ("I ate a healthy snack, but she looked like a snack in that outfit.", "snack", "healthy snack"),
+        ("I lost a 50 dollar bet at the casino, but if you want to hang out, bet.", "bet", "50 dollar bet"),
+        ("They shook hands after the game, but I was shook by that ending.", "shook", "shook hands")
+    ]
+    for sentence, target_term, literal_substr in test_cases:
+        res = decode_genz_text(sentence)
+        terms = {t["term"]: t for t in res["detected_terms"]}
+        assert target_term in terms, f"Slang '{target_term}' should be detected in: {sentence}"
+        assert len(terms[target_term]["spans"]) == 1, f"Only 1 slang occurrence should be matched for '{target_term}' in: {sentence}"
+        assert literal_substr in res["plain_english"], f"Literal phrase '{literal_substr}' should be preserved intact in: {res['plain_english']}"
+
+
+

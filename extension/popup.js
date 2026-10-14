@@ -61,6 +61,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentAnalyzedText = "";
   let activePopupTerm = null;
   let activeStandaloneTerm = null;
+  let popupPort = null;
+  let activeTabId = null;
+
+  function ensurePopupPort(tabId) {
+    if (!tabId) return null;
+    activeTabId = tabId;
+    if (popupPort) return popupPort;
+    try {
+      popupPort = chrome.tabs.connect(tabId, { name: "textlens-popup-session" });
+      popupPort.onDisconnect.addListener(() => {
+        popupPort = null;
+      });
+    } catch (e) {
+      popupPort = null;
+    }
+    return popupPort;
+  }
+
+  function handlePopupClose() {
+    clearPageHighlights();
+    if (popupPort) {
+      try {
+        popupPort.disconnect();
+      } catch (e) {}
+      popupPort = null;
+    }
+  }
+
+  window.addEventListener("pagehide", handlePopupClose);
+  window.addEventListener("beforeunload", handlePopupClose);
 
   // Load saved preferences
   chrome.storage.local.get(["sentimentEngine", "targetLanguage"], (result) => {
@@ -91,6 +121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Check for selected text in active tab
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs || !tabs[0] || !tabs[0].id) return;
+    ensurePopupPort(tabs[0].id);
     chrome.scripting.executeScript(
       {
         target: { tabId: tabs[0].id },
@@ -389,6 +420,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  const BEVERAGE_PRE_REGEX = /\b(matcha|iced|ice|hot|cold|warm|green|black|herbal|chai|boba|milk|earl\s+grey|peppermint|chamomile|jasmine|bubble|fruit|lemon|sweet|ginger|mint|oolong|hibiscus|rooibos|darjeeling|sencha|white|loose\s+leaf|cup\s+of|mug\s+of|pot\s+of|glass\s+of|brewing|brew|drank|drinking)\s+$/i;
+  const BEVERAGE_POST_REGEX = /^\s+\b(bag|bags|leaf|leaves|kettle|pot|cup|latte|tree|plantation)\b/i;
+
+  const CULINARY_COOKED_PRE_REGEX = /\b(slow|slowly|fresh|freshly|partially|well|fully|properly|evenly|under|over|home|deep|pressure|pan|oven|steam|steamed|flame|wood|kettle|perfectly|lightly|thoroughly|chef|cook|baker|caterer)\s+$/i;
+  const CULINARY_COOKED_POST_REGEX = /^\s+(for\s+\w+\s+)?(us|me|him|her|them|everyone|someone|friends|family)?\s*(a\s+|an\s+|the\s+|some\s+|our\s+|my\s+|his\s+|her\s+|their\s+|fresh\s+|delicious\s+|good\s+|hot\s+|big\s+|nice\s+|tasty\s+)?(dinner|lunch|breakfast|meal|food|meat|steak|chicken|pasta|rice|beef|pork|fish|egg|eggs|soup|vegetables|veggies|curry|sauce|potatoes|dish|bacon|turkey|salmon|shrimp|noodles|pizza|burger|burgers|pie|bread|supper|beans|tofu|mushrooms|sausage|lobster|crab|ribs|stew|medium|rare|well-done|well\s+done|thoroughly|evenly|crispy|al\s+dente|at\s+\d+|in\s+the\s+oven|on\s+the\s+stove|with\s+(olive\s+)?oil|with\s+butter|to\s+perfection|for\s+\d+\s+(hours|minutes|mins|hrs))\b/i;
+
+  const LITERAL_CAP_PRE_REGEX = /\b(baseball|bottle|swim|shower|lens|pen|knee|salary|gas|capital|hub|ice|market|fitting)\s+$/i;
+  const LITERAL_FIT_PRE_REGEX = /\b(stay|staying|keep|keeping|physically|aerobic|cardio|don't|doesn't|didn't|won't|can't|cannot|tight|snug|perfect|to)\s+$/i;
+  const LITERAL_FIT_POST_REGEX = /^\s+\b(into|in|together|me|you|him|her|them|through|for)\b/i;
+
+  function isLiteralAmbiguousContext(term, textBefore, textAfter) {
+    const t = term.toLowerCase();
+    if (t === "tea") {
+      return BEVERAGE_PRE_REGEX.test(textBefore) || BEVERAGE_POST_REGEX.test(textAfter);
+    }
+    if (t === "cooked") {
+      return CULINARY_COOKED_PRE_REGEX.test(textBefore) || CULINARY_COOKED_POST_REGEX.test(textAfter);
+    }
+    if (t === "cap" || t === "capping") {
+      return LITERAL_CAP_PRE_REGEX.test(textBefore);
+    }
+    if (t === "fit" || t === "fits") {
+      return LITERAL_FIT_PRE_REGEX.test(textBefore) || LITERAL_FIT_POST_REGEX.test(textAfter);
+    }
+    return false;
+  }
+
   function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
@@ -400,15 +458,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return new RegExp(`${startBound}${escaped}${endBound}`, "gi");
   }
 
-  function sendHighlightToActiveTab(term, matchedText, fullText) {
+  function sendHighlightToActiveTab(term, matchedText, fullText, spans) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || !tabs[0] || !tabs[0].id) return;
       const tabId = tabs[0].id;
+      ensurePopupPort(tabId);
       chrome.tabs.sendMessage(tabId, {
         action: "highlightWordOnPage",
         term: term,
         matchedText: matchedText || term,
-        fullText: fullText
+        fullText: fullText,
+        spans: spans || null
       }, (response) => {
         if (chrome.runtime.lastError) {
           // If script not yet injected in tab, inject and retry
@@ -416,11 +476,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             target: { tabId: tabId },
             files: ["content.js"]
           }, () => {
+            ensurePopupPort(tabId);
             chrome.tabs.sendMessage(tabId, {
               action: "highlightWordOnPage",
               term: term,
               matchedText: matchedText || term,
-              fullText: fullText
+              fullText: fullText,
+              spans: spans || null
             });
           });
         }
@@ -456,14 +518,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         const start = m.index;
         const end = start + m[0].length;
         const overlap = matches.some(prev => (start >= prev.start && start < prev.end) || (end > prev.start && end <= prev.end));
-        if (!overlap) {
-          matches.push({
-            start,
-            end,
-            text: m[0],
-            term: t.term
-          });
+        if (overlap) continue;
+
+        // If backend provided exact spans for this term, ensure this occurrence matches one of the detected slang spans
+        if (t.spans && Array.isArray(t.spans) && t.spans.length > 0) {
+          const matchesSpan = t.spans.some(([s, e]) => Math.abs(s - start) <= 3 && Math.abs(e - end) <= 3);
+          if (!matchesSpan) {
+            continue;
+          }
+        } else if (isLiteralAmbiguousContext(t.term, text.substring(0, start), text.substring(end))) {
+          // Fallback: Skip literal occurrences
+          continue;
         }
+
+        matches.push({
+          start,
+          end,
+          text: m[0],
+          term: t.term
+        });
       }
     });
 
@@ -555,7 +628,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const termObj = detectedTerms.find(t => t.term.toLowerCase() === term.toLowerCase());
     const matchedText = termObj ? termObj.matched_text : term;
-    sendHighlightToActiveTab(term, matchedText, currentAnalyzedText);
+    const spans = termObj ? termObj.spans : null;
+    sendHighlightToActiveTab(term, matchedText, currentAnalyzedText, spans);
   }
 
   function clearPopupHighlight() {
@@ -643,7 +717,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const termObj = detectedTerms.find(t => t.term.toLowerCase() === term.toLowerCase());
     const matchedText = termObj ? termObj.matched_text : term;
-    sendHighlightToActiveTab(term, matchedText, text);
+    const spans = termObj ? termObj.spans : null;
+    sendHighlightToActiveTab(term, matchedText, text, spans);
   }
 
   function clearStandaloneHighlight() {
