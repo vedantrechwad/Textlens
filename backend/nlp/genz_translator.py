@@ -1209,13 +1209,23 @@ LITERAL_CAP_POST_REGEX = re.compile(
 
 # 3. 'cooked' (Culinary food preparation vs Doomed / ruined)
 CULINARY_COOKED_PRE_REGEX = re.compile(
-    r'\b(slow|slowly|fresh|freshly|partially|well|fully|properly|evenly|under|over|home|deep|pressure|pan|oven|steam|steamed|flame|wood|kettle|perfectly|lightly|thoroughly|chef|cook|baker|caterer)\s+$',
+    r'(?:\b(slow|slowly|fresh|freshly|partially|well|fully|properly|evenly|under|over|home|deep|pressure|pan|oven|steam|steamed|flame|wood|kettle|perfectly|lightly|thoroughly|baker)\s+$)|'
+    r'(?:\b(steak|chicken|meat|vegetables?|veggies?|fish|eggs?|potatoes?|pasta|pizza|rice|burgers?|dish|dishes|meal|meals|soup|bacon|turkey|salmon|shrimp|noodles?|pie|bread|beef|pork|tofu|sausage|lobster|crab|ribs|stew)\b[^.?!;:]*?\b(it\s+(?:was|is)|was|were|is|are|being|been)\s+(?:[^.?!;:]*?\s+)?$)',
     re.IGNORECASE
 )
 CULINARY_COOKED_POST_REGEX = re.compile(
-    r'^\s+(for\s+\w+\s+)?(us|me|him|her|them|everyone|someone|friends|family)?\s*'
-    r'(a\s+|an\s+|the\s+|some\s+|our\s+|my\s+|his\s+|her\s+|their\s+|fresh\s+|delicious\s+|good\s+|hot\s+|big\s+|nice\s+|tasty\s+)?'
-    r'(dinner|lunch|breakfast|meal|food|meat|steak|chicken|pasta|rice|beef|pork|fish|egg|eggs|soup|vegetables|veggies|curry|sauce|potatoes|dish|bacon|turkey|salmon|shrimp|noodles|pizza|burger|burgers|pie|bread|supper|beans|tofu|mushrooms|sausage|lobster|crab|ribs|stew|medium|rare|well-done|well\s+done|thoroughly|evenly|crispy|al\s+dente|at\s+\d+|in\s+the\s+oven|on\s+the\s+stove|with\s+(olive\s+)?oil|with\s+butter|to\s+perfection|for\s+\d+\s+(hours|minutes|mins|hrs))\b',
+    r'^\s+(?:'
+    r'(?:for\s+\w+\s+)?(?:us|me|him|her|them|everyone|someone|friends|family)?\s*'
+    r'(?:a\s+|an\s+|the\s+|some\s+|our\s+|my\s+|his\s+|her\s+|their\s+|fresh\s+|delicious\s+|good\s+|hot\s+|big\s+|nice\s+|tasty\s+)?'
+    r'(?:dinner|lunch|breakfast|meal|food|meat|steak|chicken|pasta|rice|beef|pork|fish|egg|eggs|soup|vegetables|veggies|curry|sauce|potatoes|dish|bacon|turkey|salmon|shrimp|noodles|pizza|burger|burgers|pie|bread|supper|beans|tofu|mushrooms|sausage|lobster|crab|ribs|stew)\b|'
+    r'to\s+(?:a\s+)?(?:crisp|perfection|death|order|medium|rare|well[- ]done|golden)\b|'
+    r'until\s+(?:golden|brown|tender|crispy|done|soft|translucent)\b|'
+    r'(?:in|on|over)\s+(?:the\s+|a\s+|an\s+)?(?:oven|stove|stovetop|grill|pan|skillet|pot|wok|air\s*fryer|microwave|fire|flame|heat|water|oil|butter|sauce|broth)\b|'
+    r'with\s+(?:olive\s+)?(?:oil|butter|spices|salt|sauce|herbs|garlic|seasoning)\b|'
+    r'at\s+\d+\s*(?:degrees|°|f|c)\b|'
+    r'by\s+(?:baking|boiling|roasting|frying|grilling|steaming|smoking|sauteing|braising)\b|'
+    r'for\s+\d+\s+(?:hours|minutes|mins|hrs)\b'
+    r')',
     re.IGNORECASE
 )
 

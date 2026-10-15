@@ -72,6 +72,7 @@ def test_all_polysemous_slang_disambiguation():
     from backend.nlp.genz_translator import decode_genz_text
     test_cases = [
         ("I cooked dinner for my friends, but bro I am cooked for the finals tomorrow.", "cooked", "I cooked dinner"),
+        ("The chef got absolutely cooked by food critics online because his signature steak was so burnt it was literally cooked to a crisp.", "cooked", "literally cooked to a crisp"),
         ("He was wearing a baseball cap while telling a story that was pure cap.", "cap", "baseball cap"),
         ("I go to the gym to stay fit, but that fit today is fire.", "fit", "stay fit"),
         ("The salty soup made me thirsty, but he was salty about losing the match.", "salty", "salty soup"),
