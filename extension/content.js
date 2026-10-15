@@ -39,11 +39,14 @@ document.addEventListener("mouseup", (e) => {
 
     if (text.length > 0 && text !== currentSelection) {
       currentSelection = text;
+      hideModal();
+      clearWebHighlights();
       showFloatingButton(selection, e.clientX, e.clientY);
     } else if (text.length === 0) {
       currentSelection = "";
       hideFloatingButton();
       hideModal();
+      clearWebHighlights();
     }
   }, 10);
 });
@@ -111,11 +114,13 @@ function hideModal() {
     modal.remove();
     modal = null;
   }
+  document.querySelectorAll("#textlens-modal").forEach(el => el.remove());
 }
 
 function analyzeSelectedText() {
   if (!currentSelection) return;
   
+  clearWebHighlights();
   // Hide button, show modal at button's position
   const btnRect = floatingBtn.getBoundingClientRect();
   const top = window.scrollY + btnRect.bottom + 5;

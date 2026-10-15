@@ -149,7 +149,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   btnAnalyzeSelection.addEventListener("click", () => {
-    if (selectedText) analyzeText(selectedText);
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) {
+        if (selectedText) analyzeText(selectedText);
+        return;
+      }
+      chrome.scripting.executeScript(
+        {
+          target: { tabId: tabs[0].id },
+          function: () => window.getSelection().toString()
+        },
+        (results) => {
+          if (results && results[0] && results[0].result && results[0].result.trim().length > 0) {
+            selectedText = results[0].result.trim();
+          }
+          if (selectedText) analyzeText(selectedText);
+        }
+      );
+    });
   });
 
   btnAnalyzeCustom.addEventListener("click", () => {
@@ -210,8 +227,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   btnNewAnalysis.addEventListener("click", () => {
     clearPopupHighlight();
+    clearPageHighlights();
+    const analyzedTextCard = document.getElementById("analyzed-text-card");
+    if (analyzedTextCard) analyzedTextCard.classList.add("hidden");
+    const genzCard = document.getElementById("genz-card");
+    if (genzCard) genzCard.classList.add("hidden");
     document.getElementById("results").classList.add("hidden");
     document.getElementById("controls").classList.remove("hidden");
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0] || !tabs[0].id) return;
+      chrome.scripting.executeScript(
+        {
+          target: { tabId: tabs[0].id },
+          function: () => window.getSelection().toString()
+        },
+        (results) => {
+          if (results && results[0] && results[0].result) {
+            selectedText = results[0].result.trim();
+            if (selectedText.length > 0) {
+              selectionStatus.textContent = `"${selectedText.substring(0, 42)}${selectedText.length > 42 ? "..." : ""}"`;
+              btnAnalyzeSelection.disabled = false;
+            } else {
+              selectedText = "";
+              selectionStatus.textContent = "No text selected on page.";
+              btnAnalyzeSelection.disabled = true;
+            }
+          } else {
+            selectedText = "";
+            selectionStatus.textContent = "No text selected on page.";
+            btnAnalyzeSelection.disabled = true;
+          }
+        }
+      );
+    });
   });
 
   if (btnClearPopupHighlight) {
@@ -752,21 +801,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     clearPopupHighlight();
 
     // 0. Analyzed Selected Text Display & Highlighting
+    const analyzedTextCard = document.getElementById("analyzed-text-card");
     const analyzedTextDisplay = document.getElementById("analyzed-text-display");
     const analyzedTextBadge = document.getElementById("analyzed-text-badge");
-    const detectedTerms = (data.genz && data.genz.detected_terms) ? data.genz.detected_terms : [];
+    const genzCard = document.getElementById("genz-card");
+    const genzTermsContainer = document.getElementById("genz-terms-container");
+    const genzDecodedBox = document.getElementById("genz-decoded-box");
+    const genzCountBadge = document.getElementById("genz-count-badge");
+    const genzLevelTag = document.getElementById("genz-level-tag");
 
-    if (analyzedTextDisplay) {
-      const words = currentAnalyzedText.trim().split(/\s+/).filter(Boolean).length;
-      if (analyzedTextBadge) {
-        analyzedTextBadge.textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+    const hasSlang = !!(data.genz && data.genz.has_slang && data.genz.detected_terms && data.genz.detected_terms.length > 0);
+    const detectedTerms = hasSlang ? data.genz.detected_terms : [];
+
+    if (hasSlang) {
+      if (analyzedTextCard) analyzedTextCard.classList.remove("hidden");
+      if (analyzedTextDisplay) {
+        const words = currentAnalyzedText.trim().split(/\s+/).filter(Boolean).length;
+        if (analyzedTextBadge) {
+          analyzedTextBadge.textContent = `${words} ${words === 1 ? 'word' : 'words'}`;
+        }
+        renderTextWithClickableTerms(
+          analyzedTextDisplay,
+          currentAnalyzedText,
+          detectedTerms,
+          (term) => activatePopupHighlight(term, detectedTerms)
+        );
       }
-      renderTextWithClickableTerms(
-        analyzedTextDisplay,
-        currentAnalyzedText,
-        detectedTerms,
-        (term) => activatePopupHighlight(term, detectedTerms)
-      );
+    } else {
+      // Clean standard English: Completely hide and reset Gen-Z card and highlight UI
+      if (analyzedTextCard) analyzedTextCard.classList.add("hidden");
+      if (analyzedTextDisplay) analyzedTextDisplay.innerHTML = "";
+      if (genzCard) genzCard.classList.add("hidden");
+      if (genzTermsContainer) genzTermsContainer.innerHTML = "";
+      if (genzDecodedBox) genzDecodedBox.textContent = "";
+      if (genzCountBadge) genzCountBadge.textContent = "";
+      if (genzLevelTag) genzLevelTag.textContent = "";
+      clearPopupHighlight();
+      clearPageHighlights();
     }
 
     // 1. Language Detection & Translation Banner
@@ -796,41 +867,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     // 2. Gen-Z Slang Decoder (DISPLAYED FIRST AND PROMINENTLY)
-    const genzCard = document.getElementById("genz-card");
-    const genzTermsContainer = document.getElementById("genz-terms-container");
-    const genzDecodedBox = document.getElementById("genz-decoded-box");
-    const genzCountBadge = document.getElementById("genz-count-badge");
-    const genzLevelTag = document.getElementById("genz-level-tag");
-
-    if (data.genz && data.genz.has_slang && data.genz.detected_terms.length > 0) {
-      genzCard.classList.remove("hidden");
-      genzCountBadge.textContent = `${data.genz.term_count} Slang ${data.genz.term_count === 1 ? 'Term' : 'Terms'}`;
-      genzLevelTag.textContent = `Intensity: ${data.genz.slang_level} • ${data.genz.slang_density}% Density`;
-      genzTermsContainer.innerHTML = "";
-
-      data.genz.detected_terms.forEach(t => {
-        const item = document.createElement("div");
-        item.className = "genz-term-item interactive-term";
-        item.setAttribute("data-term", t.term);
-        item.innerHTML = `
-          <div class="genz-term-header">
-            <span class="genz-term-name">"${t.term}" ➔ ${t.translation}</span>
-            <span class="genz-term-category">${t.category}</span>
-          </div>
-          <div class="genz-term-def">${t.definition}</div>
-          <button class="btn-highlight-term" type="button" data-term="${t.term}">
-            🖍️ Click to Highlight in Text
-          </button>
-        `;
-        item.addEventListener("click", () => {
-          activatePopupHighlight(t.term, data.genz.detected_terms);
-        });
-        genzTermsContainer.appendChild(item);
-      });
-
-      genzDecodedBox.textContent = data.genz.plain_english;
-    } else {
-      genzCard.classList.add("hidden");
+    if (hasSlang && genzCard) {
+        genzCard.classList.remove("hidden");
+        if (genzCountBadge) genzCountBadge.textContent = `${data.genz.term_count} Slang ${data.genz.term_count === 1 ? 'Term' : 'Terms'}`;
+        if (genzLevelTag) genzLevelTag.textContent = `Intensity: ${data.genz.slang_level} • ${data.genz.slang_density}% Density`;
+        if (genzTermsContainer) {
+          genzTermsContainer.innerHTML = "";
+          data.genz.detected_terms.forEach(t => {
+            const item = document.createElement("div");
+            item.className = "genz-term-item interactive-term";
+            item.setAttribute("data-term", t.term);
+            item.innerHTML = `
+              <div class="genz-term-header">
+                <span class="genz-term-name">"${t.term}" ➔ ${t.translation}</span>
+                <span class="genz-term-category">${t.category}</span>
+              </div>
+              <div class="genz-term-def">${t.definition}</div>
+              <button class="btn-highlight-term" type="button" data-term="${t.term}">
+                🖍️ Click to Highlight in Text
+              </button>
+            `;
+            item.addEventListener("click", () => {
+              activatePopupHighlight(t.term, data.genz.detected_terms);
+            });
+            genzTermsContainer.appendChild(item);
+          });
+        }
+        if (genzDecodedBox) {
+          genzDecodedBox.textContent = data.genz.plain_english;
+        }
+      }
     }
 
     // 3. Sentiment
