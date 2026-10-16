@@ -19,7 +19,10 @@ This project was built for an academic NLP course to demonstrate traditional NLP
 - **Extractive Summarization**: TextRank algorithm built using cosine similarity and PageRank.
 - **Keyword Extraction**: Unigram and bigram extraction using TF-IDF.
 - **Named Entity Recognition**: Identifies organizations, people, and locations using spaCy.
+- **Entity Knowledge Peek**: Click any recognized named entity badge in the extension popup to view a 1-sentence quick fact, short description, thumbnail, and Wikipedia article link fetched on-demand from the Wikipedia REST API.
 - **Text Statistics**: Basic character/word counts, readability complexity, and POS (Part of Speech) tagging distributions.
+
+> **Privacy Note**: Entity names (not page text) are sent to Wikipedia only when you click an entity badge.
 
 ## Architecture
 
