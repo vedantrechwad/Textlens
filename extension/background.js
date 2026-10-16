@@ -70,4 +70,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Return true to indicate we will send a response asynchronously
     return true;
   }
+
+  if (request.action === "entityPeek") {
+    const PEEK_URL = `http://127.0.0.1:5000/api/entity-peek?name=${encodeURIComponent(request.name || "")}&label=${encodeURIComponent(request.label || "")}`;
+    fetch(PEEK_URL)
+      .then(res => res.json())
+      .then(data => sendResponse(data))
+      .catch(err => {
+        console.error("Entity peek error:", err);
+        sendResponse({ found: false, error: err.toString() });
+      });
+    return true;
+  }
 });

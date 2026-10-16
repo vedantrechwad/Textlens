@@ -10,3 +10,4 @@ torch
 transformers
 deep-translator
 langdetect
+requests

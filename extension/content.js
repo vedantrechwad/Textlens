@@ -4,6 +4,16 @@ let savedSelectionText = "";
 let floatingBtn = null;
 let modal = null;
 
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Track selection range continuously
 document.addEventListener("selectionchange", () => {
   const selection = window.getSelection();
@@ -222,12 +232,83 @@ function analyzeSelectedText() {
       if (response.keywords && response.keywords.length > 0) {
         html += `<div class="textlens-section"><h5>Keywords</h5><div class="textlens-chips">`;
         response.keywords.slice(0, 5).forEach(k => {
-          html += `<span class="textlens-chip">${k.term}</span>`;
+          html += `<span class="textlens-chip">${escapeHtml(k.term)}</span>`;
         });
         html += `</div></div>`;
       }
+
+      // 6. Named Entities
+      if (response.entities && response.entities.length > 0) {
+        html += `<div class="textlens-section"><h5>Named Entities (Click to peek Wikipedia fact)</h5><div class="textlens-chips">`;
+        response.entities.forEach(e => {
+          const baseClass = e.label === 'ORG' ? 'entity-org' : (e.label === 'GPE' || e.label === 'LOC' ? 'entity-gpe' : (e.label === 'PERSON' ? 'entity-person' : ''));
+          html += `<span class="textlens-chip ${baseClass} interactive-modal-entity" data-name="${escapeHtml(e.text)}" data-label="${escapeHtml(e.label)}" title="Click to peek fact from Wikipedia">${escapeHtml(e.text)} (${escapeHtml(e.label)})</span>`;
+        });
+        html += `</div><div id="textlens-modal-entity-peek" class="textlens-entity-peek hidden"></div></div>`;
+      }
       
       body.innerHTML = html;
+
+      // Attach click listeners to Entity chips inside in-page modal
+      const modalPeekBox = document.getElementById("textlens-modal-entity-peek");
+      body.querySelectorAll(".interactive-modal-entity").forEach(chip => {
+        chip.addEventListener("click", () => {
+          const name = chip.getAttribute("data-name");
+          const label = chip.getAttribute("data-label");
+          if (!modalPeekBox) return;
+
+          if (modalPeekBox.getAttribute("data-active-name") === name && !modalPeekBox.classList.contains("hidden")) {
+            modalPeekBox.classList.add("hidden");
+            modalPeekBox.removeAttribute("data-active-name");
+            return;
+          }
+
+          modalPeekBox.setAttribute("data-active-name", name);
+          modalPeekBox.classList.remove("hidden");
+          modalPeekBox.textContent = "Loading Wikipedia quick fact...";
+
+          chrome.runtime.sendMessage({ action: "entityPeek", name, label }, (data) => {
+            if (!modalPeekBox || modalPeekBox.getAttribute("data-active-name") !== name) return;
+            modalPeekBox.replaceChildren();
+
+            if (!data || !data.found) {
+              const empty = document.createElement("div");
+              empty.textContent = "No quick fact found on Wikipedia for this entity.";
+              empty.style.color = "#64748b";
+              empty.style.fontStyle = "italic";
+              modalPeekBox.appendChild(empty);
+              return;
+            }
+
+            const title = document.createElement("div");
+            title.className = "textlens-entity-peek-title";
+            title.textContent = data.title || name;
+            modalPeekBox.appendChild(title);
+
+            if (data.description) {
+              const desc = document.createElement("div");
+              desc.className = "textlens-entity-peek-desc";
+              desc.textContent = data.description;
+              modalPeekBox.appendChild(desc);
+            }
+
+            const fact = document.createElement("div");
+            fact.className = "textlens-entity-peek-fact";
+            fact.textContent = data.fact || "No fact available.";
+            modalPeekBox.appendChild(fact);
+
+            if (data.url) {
+              const link = document.createElement("a");
+              link.className = "textlens-entity-peek-link";
+              link.href = data.url;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.textContent = "Read more on Wikipedia →";
+              modalPeekBox.appendChild(link);
+            }
+          });
+        });
+      });
 
       // Attach click listeners to Gen-Z slang chips inside modal
       body.querySelectorAll(".interactive-modal-slang").forEach(chip => {

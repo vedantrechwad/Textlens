@@ -1,6 +1,10 @@
 const API_URL = "http://127.0.0.1:5000/api/analyze";
 const DECODE_URL = "http://127.0.0.1:5000/api/genz-decode";
 const GLOSSARY_URL = "http://127.0.0.1:5000/api/genz-glossary";
+const ENTITY_PEEK_URL = "http://127.0.0.1:5000/api/entity-peek";
+const ALLOWED_ENTITY_LABELS = new Set(['PERSON', 'ORG', 'GPE', 'LOC', 'EVENT', 'PRODUCT', 'WORK_OF_ART', 'NORP', 'FAC']);
+const entityPeekCache = new Map();
+let currentActiveEntityChip = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Navigation Tabs
@@ -897,7 +901,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           genzDecodedBox.textContent = data.genz.plain_english;
         }
       }
-    }
 
     // 3. Sentiment
     if (data.sentiment) {
@@ -965,13 +968,38 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (data.entities) {
       const ec = document.getElementById("entities-container");
       ec.innerHTML = "";
-      data.entities.forEach(e => {
-        const s = document.createElement("span");
-        const baseClass = e.label === 'ORG' ? 'entity-org' : (e.label === 'GPE' || e.label === 'LOC' ? 'entity-gpe' : (e.label === 'PERSON' ? 'entity-person' : ''));
-        s.className = "chip " + baseClass;
-        s.textContent = `${e.text} (${e.label})`;
-        ec.appendChild(s);
-      });
+      hideEntityPeek();
+      if (data.entities.length === 0) {
+        const emptyMsg = document.createElement("span");
+        emptyMsg.className = "entity-peek-empty";
+        emptyMsg.textContent = "No named entities detected in this text.";
+        ec.appendChild(emptyMsg);
+      } else {
+        data.entities.forEach(e => {
+          const s = document.createElement("span");
+          const baseClass = e.label === 'ORG' ? 'entity-org' : (e.label === 'GPE' || e.label === 'LOC' ? 'entity-gpe' : (e.label === 'PERSON' ? 'entity-person' : ''));
+          const isClickable = ALLOWED_ENTITY_LABELS.has(e.label);
+          s.className = "chip " + baseClass + (isClickable ? " entity-clickable" : "");
+          s.textContent = `${e.text} (${e.label})`;
+          if (isClickable) {
+            s.title = "Click to peek quick fact from Wikipedia";
+            s.setAttribute("role", "button");
+            s.setAttribute("tabindex", "0");
+            s.addEventListener("click", (evt) => {
+              evt.stopPropagation();
+              showEntityPeek(s, e);
+            });
+            s.addEventListener("keydown", (evt) => {
+              if (evt.key === "Enter" || evt.key === " ") {
+                evt.preventDefault();
+                evt.stopPropagation();
+                showEntityPeek(s, e);
+              }
+            });
+          }
+          ec.appendChild(s);
+        });
+      }
     }
 
     // 7. Stats
@@ -987,4 +1015,163 @@ document.addEventListener("DOMContentLoaded", async () => {
       pc.innerHTML = `<div>Nouns: ${data.pos.Nouns || 0} | Verbs: ${data.pos.Verbs || 0} | Adjectives: ${data.pos.Adjectives || 0}</div>`;
     }
   }
+
+  // --- Entity Knowledge Peek Helpers ---
+  function hideEntityPeek() {
+    const container = document.getElementById("entity-peek-container");
+    if (container) {
+      container.classList.add("hidden");
+      container.replaceChildren();
+    }
+    if (currentActiveEntityChip) {
+      currentActiveEntityChip.classList.remove("active");
+      currentActiveEntityChip = null;
+    }
+  }
+
+  function showEntityPeek(chipElement, entity) {
+    const container = document.getElementById("entity-peek-container");
+    if (!container) return;
+
+    // Toggle close if clicking the currently active chip
+    if (currentActiveEntityChip === chipElement) {
+      hideEntityPeek();
+      return;
+    }
+
+    if (currentActiveEntityChip) {
+      currentActiveEntityChip.classList.remove("active");
+    }
+
+    currentActiveEntityChip = chipElement;
+    chipElement.classList.add("active");
+    container.classList.remove("hidden");
+    container.replaceChildren();
+
+    const cacheKey = `${(entity.text || '').toLowerCase()}|||${entity.label || ''}`;
+
+    if (entityPeekCache.has(cacheKey)) {
+      renderEntityPeekContent(container, entityPeekCache.get(cacheKey));
+      return;
+    }
+
+    // Loading spinner row
+    const spinnerRow = document.createElement("div");
+    spinnerRow.className = "peek-spinner-row";
+    const spinner = document.createElement("div");
+    spinner.className = "peek-spinner";
+    const spinnerText = document.createElement("span");
+    spinnerText.textContent = "Loading Wikipedia quick fact...";
+    spinnerRow.appendChild(spinner);
+    spinnerRow.appendChild(spinnerText);
+    container.appendChild(spinnerRow);
+
+    const queryUrl = `${ENTITY_PEEK_URL}?name=${encodeURIComponent(entity.text)}&label=${encodeURIComponent(entity.label || '')}`;
+
+    fetch(queryUrl)
+      .then(res => res.json())
+      .then(data => {
+        entityPeekCache.set(cacheKey, data);
+        if (currentActiveEntityChip === chipElement) {
+          renderEntityPeekContent(container, data);
+        }
+      })
+      .catch(() => {
+        const errorData = { found: false };
+        entityPeekCache.set(cacheKey, errorData);
+        if (currentActiveEntityChip === chipElement) {
+          renderEntityPeekContent(container, errorData);
+        }
+      });
+  }
+
+  function renderEntityPeekContent(container, data) {
+    container.replaceChildren();
+
+    const header = document.createElement("div");
+    header.className = "entity-peek-header";
+
+    const titleArea = document.createElement("div");
+    titleArea.className = "entity-peek-title-area";
+
+    const title = document.createElement("div");
+    title.className = "entity-peek-title";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.className = "entity-peek-close";
+    closeBtn.textContent = "×";
+    closeBtn.title = "Close quick fact";
+    closeBtn.addEventListener("click", (evt) => {
+      evt.stopPropagation();
+      hideEntityPeek();
+    });
+
+    header.appendChild(titleArea);
+    header.appendChild(closeBtn);
+    container.appendChild(header);
+
+    if (!data || !data.found) {
+      title.textContent = "Quick Fact";
+      titleArea.appendChild(title);
+
+      const empty = document.createElement("div");
+      empty.className = "entity-peek-empty";
+      empty.textContent = "No quick fact found for this entity.";
+      container.appendChild(empty);
+      return;
+    }
+
+    title.textContent = data.title || "Quick Fact";
+    titleArea.appendChild(title);
+
+    if (data.description) {
+      const desc = document.createElement("div");
+      desc.className = "entity-peek-desc";
+      desc.textContent = data.description;
+      titleArea.appendChild(desc);
+    }
+
+    const body = document.createElement("div");
+    body.className = "entity-peek-body";
+
+    if (data.thumbnail) {
+      const img = document.createElement("img");
+      img.className = "entity-peek-thumb";
+      img.src = data.thumbnail;
+      img.alt = data.title || "Entity thumbnail";
+      img.onerror = () => { img.style.display = "none"; };
+      body.appendChild(img);
+    }
+
+    const content = document.createElement("div");
+    content.className = "entity-peek-content";
+
+    const fact = document.createElement("div");
+    fact.className = "entity-peek-fact";
+    fact.textContent = data.fact || "No fact available.";
+    content.appendChild(fact);
+
+    if (data.url) {
+      const link = document.createElement("a");
+      link.className = "entity-peek-link";
+      link.href = data.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Read more on Wikipedia →";
+      content.appendChild(link);
+    }
+
+    body.appendChild(content);
+    container.appendChild(body);
+  }
+
+  // Click outside to close active entity peek card
+  document.addEventListener("click", (e) => {
+    const container = document.getElementById("entity-peek-container");
+    if (!container || container.classList.contains("hidden")) return;
+    if (!container.contains(e.target) && (!currentActiveEntityChip || !currentActiveEntityChip.contains(e.target))) {
+      hideEntityPeek();
+    }
+  });
 });

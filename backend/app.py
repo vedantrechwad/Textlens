@@ -13,6 +13,7 @@ from backend.nlp.pos import get_pos_tags
 from backend.nlp.statistics import calculate_statistics
 from backend.nlp.genz_translator import decode_genz_text
 from backend.nlp.multilingual import detect_language, translate_text, translate_to_target
+from backend.nlp.entity_peek import get_entity_summary, ALLOWED_LABELS
 import logging
 
 app = Flask(__name__)
@@ -145,5 +146,22 @@ def translate_api():
     return jsonify({"success": True, "translation": result}), 200
 
 
+@app.route('/api/entity-peek', methods=['GET'])
+def entity_peek():
+    name = request.args.get('name', '').strip()
+    if not name or len(name) > 100:
+        return jsonify({"success": False, "error": "Name is required and must be at most 100 characters."}), 400
+
+    label = request.args.get('label', None)
+    if label:
+        label = label.strip()
+        if label not in ALLOWED_LABELS:
+            return jsonify({"success": False, "error": f"Invalid label '{label}'."}), 400
+
+    result = get_entity_summary(name, label)
+    return jsonify(result), 200
+
+
 if __name__ == '__main__':
     app.run(debug=Config.DEBUG_MODE, port=5000)
+
